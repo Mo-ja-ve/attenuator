@@ -6,6 +6,17 @@
 #include <string.h>
 #include <math.h>
 
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  ((byte) & 0x80 ? '1' : '0'), \
+  ((byte) & 0x40 ? '1' : '0'), \
+  ((byte) & 0x20 ? '1' : '0'), \
+  ((byte) & 0x10 ? '1' : '0'), \
+  ((byte) & 0x08 ? '1' : '0'), \
+  ((byte) & 0x04 ? '1' : '0'), \
+  ((byte) & 0x02 ? '1' : '0'), \
+  ((byte) & 0x01 ? '1' : '0') 
+
 //pin controls for GM Series 349 and 349H
 double pins[15] = {
     0.06,   // 1 
@@ -91,22 +102,26 @@ int main(){
 
 	printf("\n\n");
 	printf("Hello.\n");
-	printf("Welcome to the windows GM 349 attenuator control program.\n\n");
+	printf("Welcome to the GM 349 attenuator control program for Windows.\n\n");
 	printf("Enter q to quit the program.\n");
 	printf("Please select number of attenuators you will be using.\n");
 	printf("Num of available attenuator options 1 - 4: \n");
 	// numAtten = getch() 
 	printf("Enter r to stop and reset the program for new attenuation inputs\n");
 	printf("Enter the amount of attenuation to be produced in dB.\n");
-	printf("Min: 0.06  Max: 63.97\n\n");
+	printf("Min: 0.03  Max: 63.97\n\n");
 	
 	writeData[0] = numAtten;
 	
 	printf("Enter: ");
 	double temp =0.0;
 	scanf("%lf", &temp);
+	if(temp < 0.03 || temp > 63.97){
+		printf("\nError, input %lf is out of range\n", temp);
+		printf("Please try again\n");
+	}
 	writeData[1] = (char)((int)floor(temp));
-	temp = temp - floor(temp);
+	temp = (temp - floor(temp)) + 0.0000001;
 	//printf("HELLO: %lf", temp);
 	temp *= 100;
 	writeData[2] = (char)temp;
@@ -120,9 +135,16 @@ int main(){
 	// printf("\n");
 	
 	do {
+
+		printf("\nwrite data 1: %d\n",writeData[1]);
+		printf("\nwrite data 2: %d\n",writeData[2]);
 		divideUp(writeData);
-		printf("WRITE DATA: %d\n", writeData[0]);
-		printf("WRITE DATA: %d\n", writeData[1]);
+		printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(writeData[0]));
+		printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(writeData[1]));
+
+		printf("\nwrite data 1: %d\n",writeData[0]);
+		printf("\nwrite data 2: %d\n",writeData[1]);
+
 
 		if(!WriteFile(hDevice, writeData, 2, &bytesWritten, NULL)) {
 			printf("Failed to write to the USB device. Error code: %lu\n", GetLastError());
@@ -132,13 +154,12 @@ int main(){
 			printf("Wrote 2 bytes to controller succesfully, enter r to stop and reset or q to quit\n",bytesWritten);
 		}
 		while (1){
-			printf("Waiting for return ...\n");
+			//printf("Waiting for return ...\n");
         	if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
             	if (bytesRead > 0){
                 	buffer[bytesRead] = '\0';
-
 					for(int i = 0; i < bytesRead; i++)
-                		printf("Received data: %d\n", buffer[i]);
+                		//printf("Received data: %d\n", buffer[i]);
 
 					break;
             	}
@@ -147,6 +168,7 @@ int main(){
 		tempChar[0] = getch();
 		if( tempChar[0] == 'q' || tempChar[0] == 'Q'){
 			run = 0;
+			CloseHandle(hDevice);
 		}
 		if(tempChar[0] == 'r');
 	}while(run);
@@ -156,55 +178,63 @@ int main(){
 
 void divideUp(char writeData[]){
 
-		char transfer1, transfer2 = (char)0;
+		//char transfer1, transfer2 = (char)0;
 		int lvldB2 = (int)writeData[2];
 		int lvldB1 = (int)writeData[1];
+		writeData[2] = 0b00000000;
+		writeData[1] = 0b00000000;
+		writeData[0] = 0b00000000;
+		
 		double temp = 0.0;
 
 		for(int i = 14; i >= 0 ; i--){
 			
 			if(lvldB2 == 0)
 				break;
-			temp = pins[i]*100.0;
 
+			temp = pins[i]*100.0;
+			//printf("lvldB2: %d\n", lvldB2);
+			//printf("temp: %d\n", temp);
+			 
 			if( lvldB2 == (int)(temp) ){
-				//printf("hello!");
+				printf("hello! 1 ");
 				if(i <= 7){
-					writeData[0] = lookUp[i]  | transfer1;
-					writeData[1] = transfer2;
+					writeData[0] = lookUp[i] | writeData[0];
 					break;
 				}else{
-					writeData[0] = transfer1;
-					writeData[1] = lookUp[i]  | transfer2;
+					printf("look up I: %d\n", lookUp[i]);
+					printf("write data: %d\n", writeData[1]);
+
+					writeData[1] = lookUp[i] | writeData[1];
+					printf("\nI: %d\n", i);
 					printf("hello!: %d\n", writeData[1]);
 					break;
 				}
 			}
 
+			if(lvldB2 <= 3)
+				writeData[1] = writeData[1] | lookUp[14];
+
 			if(pins[i] < 1.0 && pins[i] != 0){
-				if(lvldB2 % (int)(pins[i]*100) != 0 && lvldB2 % (int)(pins[i]*100) != lvldB2){
-					printf("hello!");
+				if(lvldB2 % (int)(pins[i]*100 + 0.0000001) != 0 && lvldB2 % (int)(pins[i]*100 + 0.0000001) != lvldB2){
 					switch(i+1){
 						case 1:
-							transfer1 = transfer1 | 0b10000000;
-							lvldB2 -= (int)pins[i]*100;
+							writeData[0] = writeData[0] | lookUp[i];
+							lvldB2 -= (int)(pins[i]*100 + 0.0000001);
 							break;
 						case 2:
-							transfer1 = transfer1 | 0b01000000;
-							lvldB2 -= (int)pins[i]*100;
+							writeData[0] = writeData[0] | lookUp[i];
+							lvldB2 -= (int)(pins[i]*100 + 0.0000001);
 							break;
 						case 5:
-							transfer1 = transfer1 | 0b00001000;
-							lvldB2 -= (int)pins[i]*100;
+							writeData[0] = writeData[0] | lookUp[i];
+							lvldB2 -= (int)(pins[i]*100 + 0.0000001);
 							break;
 						case 6:
-							transfer1 = transfer1 | 0b00000100;
-							lvldB2 -= (int)pins[i]*100;
+							writeData[0] = writeData[0] | lookUp[i];
+							lvldB2 -= (int)(pins[i]*100 + 0.0000001);
 							break;
-						case 15:
-							transfer2 = transfer2 | 0b00000100;
-							lvldB2 -= (int)pins[i]*100;
-							break;
+
 						default:
 							break;
 					}
@@ -219,12 +249,10 @@ void divideUp(char writeData[]){
 
 			if(lvldB1 == (int)pins[i]){
 				if(i <= 7){
-					writeData[0] = lookUp[i]  | transfer1;
-					//writeData[1] = transfer2;
+					writeData[0] = lookUp[i] | writeData[0];
 					return;
 				}else{
-					//writeData[0] = transfer1;
-					writeData[1] = lookUp[i]  | transfer2;
+					writeData[1] = lookUp[i] | writeData[1];
 					return;
 				}
 			}
@@ -233,28 +261,32 @@ void divideUp(char writeData[]){
 				if(lvldB1 % (int)pins[i] != 0 && lvldB1 % (int)pins[i] != lvldB1){
 					switch(i+1){
 						case 7:
-							transfer1 = transfer1 | 0b00000010;
+							writeData[0] = writeData[0] | lookUp[i];
 							lvldB1 -= (int)pins[i];
 							break;
 						case 8:
-							transfer1 = transfer1 | 0b00000001;
+							writeData[0] = writeData[0] | lookUp[i];
 							lvldB1 -= (int)pins[i];
 							break;
 						case 9:
-							transfer2 = transfer2 | 0b10000000;
+							writeData[1] = writeData[1] | lookUp[i];
 							lvldB1 -= (int)pins[i];
+							printf("\n4: %d\n", writeData[1]);
 							break;
 						case 10:
-							transfer2 = transfer2 | 0b01000000;
-							lvldB1-= (int)pins[i];
+							writeData[1] = writeData[1] | lookUp[i];
+							lvldB1 -= (int)pins[i];
+							printf("\n8: %d\n", writeData[1]);
 							break;
 						case 11:
-							transfer2 = transfer2 | 0b00100000;
+							writeData[1] = writeData[1] | lookUp[i];
 							lvldB1 -= (int)pins[i];
+							printf("\n16: %d\n", writeData[1]);
 							break;
 						case 12:
-							transfer2 = transfer2 | 0b00010000;
+							writeData[1] = writeData[1] | lookUp[i];
 							lvldB1 -= (int)pins[i];
+							printf("\n32: %d\n", writeData[1]);
 							break;
 					default:
 						break;
