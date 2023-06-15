@@ -50,7 +50,7 @@ char lookUp[15] = {
     0b10000000, // 4.0
     0b01000000, // 8.0
     0b00100000, // 16.0
-    0b00010000, // 32.0 
+    0b00010000, // 32.0
     0b00001000, // 0.0   // +12V TO +15V
     0b00000100, // 0.0   // -12V TO -15V
     0b00000100  // 0.03
@@ -140,6 +140,7 @@ int main(){
 		printf("\nwrite data 2: %d\n",writeData[2]);
 		divideUp(writeData);
 		printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(writeData[0]));
+		printf("\n");
 		printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(writeData[1]));
 
 		printf("\nwrite data 1: %d\n",writeData[0]);
@@ -170,7 +171,10 @@ int main(){
 			run = 0;
 			CloseHandle(hDevice);
 		}
-		if(tempChar[0] == 'r');
+
+		if(tempChar[0] == 'r')
+			
+
 	}while(run);
 	//printf("Data written to the USB device: %s\n", writeData);
 }
@@ -217,20 +221,20 @@ void divideUp(char writeData[]){
 
 			if(pins[i] < 1.0 && pins[i] != 0){
 				if(lvldB2 % (int)(pins[i]*100 + 0.0000001) != 0 && lvldB2 % (int)(pins[i]*100 + 0.0000001) != lvldB2){
-					switch(i+1){
+					switch(i){
+						case 0:
+							writeData[0] = writeData[0] | lookUp[i];
+							lvldB2 -= (int)(pins[i]*100 + 0.0000001);
+							break;
 						case 1:
 							writeData[0] = writeData[0] | lookUp[i];
 							lvldB2 -= (int)(pins[i]*100 + 0.0000001);
 							break;
-						case 2:
+						case 4:
 							writeData[0] = writeData[0] | lookUp[i];
 							lvldB2 -= (int)(pins[i]*100 + 0.0000001);
 							break;
 						case 5:
-							writeData[0] = writeData[0] | lookUp[i];
-							lvldB2 -= (int)(pins[i]*100 + 0.0000001);
-							break;
-						case 6:
 							writeData[0] = writeData[0] | lookUp[i];
 							lvldB2 -= (int)(pins[i]*100 + 0.0000001);
 							break;
@@ -241,6 +245,9 @@ void divideUp(char writeData[]){
 				}
 			}
 		}
+
+		if(lvldB2 <= 5)
+			writeData[0] = writeData[0] | writeData[14];
 
 		for(int i = 14; i >= 0 ; i--){
 			
@@ -259,31 +266,31 @@ void divideUp(char writeData[]){
 
 			if(pins[i] >= 1.0){
 				if(lvldB1 % (int)pins[i] != 0 && lvldB1 % (int)pins[i] != lvldB1){
-					switch(i+1){
+					switch(i){
+						case 6:
+							writeData[0] = writeData[0] | lookUp[i];
+							lvldB1 -= (int)pins[i];
+							break;
 						case 7:
 							writeData[0] = writeData[0] | lookUp[i];
 							lvldB1 -= (int)pins[i];
 							break;
 						case 8:
-							writeData[0] = writeData[0] | lookUp[i];
-							lvldB1 -= (int)pins[i];
-							break;
-						case 9:
 							writeData[1] = writeData[1] | lookUp[i];
 							lvldB1 -= (int)pins[i];
 							printf("\n4: %d\n", writeData[1]);
 							break;
-						case 10:
+						case 9:
 							writeData[1] = writeData[1] | lookUp[i];
 							lvldB1 -= (int)pins[i];
 							printf("\n8: %d\n", writeData[1]);
 							break;
-						case 11:
+						case 10:
 							writeData[1] = writeData[1] | lookUp[i];
 							lvldB1 -= (int)pins[i];
 							printf("\n16: %d\n", writeData[1]);
 							break;
-						case 12:
+						case 11:
 							writeData[1] = writeData[1] | lookUp[i];
 							lvldB1 -= (int)pins[i];
 							printf("\n32: %d\n", writeData[1]);
