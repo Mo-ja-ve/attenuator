@@ -1,10 +1,16 @@
 #include <Windows.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <conio.h>
+#include <ctype.h>  // Include the <ctype.h> header for the toupper() function
 #include <malloc.h>
 #include <string.h>
 #include <math.h>
+
+//***  SOFTWARE PROPERTY OF OHIO UNIVERSITY - AVIONICS DEPARTMENT  ***//
+//***  ANDRE KALINICHENKO - SUMMER 2023  ***//
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)  \
@@ -25,12 +31,12 @@ double pins[15] = {
     0.0,    // 4  GND
     0.25,   // 5
     0.5,    // 6
-    1.0,    // 7  //57
+    1.0,    // 7
     2.0,    // 8
     4.0,    // 9
-    8.0,    // 10 //57
-    16.0,   // 11 //57
-    32.0,   // 12 //57
+    8.0,    // 10 
+    16.0,   // 11 
+    32.0,   // 12 
     0.0,    // 13  +12V TO +15V
     0.0,    // 14  -12V TO -15V
     0.03    // 15
@@ -56,7 +62,6 @@ char lookUp[15] = {
     0b00000100  // 0.03
 };
 
-//  00000010 01110000
 
 HANDLE hDevice;  // Handle to the USB device
 char *writeData;  // Data to be written
@@ -64,9 +69,19 @@ DWORD bytesWritten, bytesRead;  // Variable to store the number of bytes written
 bool run = 1;
 DCB dcbSerialParams;
 
+// Signal handler function
+void handleCtrlC(int signal) {
+    printf("\nCtrl+C received. Exiting program...\n");
+    exit(0);
+}
+
 void divideUp(char writeData[]);
+void prompt1(char writeData[]);
 
 int main(){
+
+    // Register the signal handler for SIGINT (Ctrl+C)
+    signal(SIGINT, handleCtrlC);
 
 	writeData = (char*)malloc(5);
 
@@ -112,19 +127,6 @@ int main(){
 	printf("Min: 0.03  Max: 63.97\n\n");
 	
 	writeData[0] = numAtten;
-	
-	printf("Enter: ");
-	double temp =0.0;
-	scanf("%lf", &temp);
-	if(temp < 0.03 || temp > 63.97){
-		printf("\nError, input %lf is out of range\n", temp);
-		printf("Please try again\n");
-	}
-	writeData[1] = (char)((int)floor(temp));
-	temp = (temp - floor(temp)) + 0.0000001;
-	//printf("HELLO: %lf", temp);
-	temp *= 100;
-	writeData[2] = (char)temp;
 
 	// printf("\n");
 	// printf("write data: %d", writeData[0]);
@@ -133,7 +135,8 @@ int main(){
 	// printf("\n");
 	// printf("write data: %d", writeData[2]);
 	// printf("\n");
-	
+	prompt1(writeData);
+
 	do {
 
 		printf("\nwrite data 1: %d\n",writeData[1]);
@@ -154,34 +157,69 @@ int main(){
 		}else{
 			printf("Wrote 2 bytes to controller succesfully, enter r to stop and reset or q to quit\n",bytesWritten);
 		}
-		while (1){
-			//printf("Waiting for return ...\n");
+		bool stop = 1;
+		while (stop){
+			printf("\nWaiting for return...\n");
         	if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
             	if (bytesRead > 0){
                 	buffer[bytesRead] = '\0';
 					for(int i = 0; i < bytesRead; i++)
-                		//printf("Received data: %d\n", buffer[i]);
-
-					break;
+                		printf("Received data: %d\n", buffer[i]);
+					stop = 0;
             	}
         	}
     	}
+		printf("\n\nEnter r for new attenuation level, s to stop attenuator, or q to quit the program");
 		tempChar[0] = getch();
 		if( tempChar[0] == 'q' || tempChar[0] == 'Q'){
 			run = 0;
 			CloseHandle(hDevice);
 		}
 
-		if(tempChar[0] == 'r')
-			
+		if(tempChar[0] == 'r'|| tempChar[0] == 'R')
+			prompt1(writeData);
 
 	}while(run);
 	//printf("Data written to the USB device: %s\n", writeData);
+
+	return 0;
+}
+
+
+void prompt1(char writeData[]){
+	bool run = 1;
+	do {
+		printf("Enter: ");
+		double temp =0.0;
+		scanf(" %lf", &temp);// Add a space before %lf to skip leading whitespace
+		printf("\ntest: %lf\n", temp);
+        
+		// Clear the input buffer
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF);
+	
+        // Check if 'q' or 'Q' is entered
+        if (tolower((char)temp) == 'q') {
+            printf("\nExiting program...\n");
+            exit(0);
+        }
+
+		if(temp < 0.03 || temp > 63.97){
+			printf("\nError, input %lf is out of range\n", temp);
+			printf("Please try again\n\n");
+		}else{
+			writeData[1] = (char)((int)floor(temp));
+			temp = (temp - floor(temp)) + 0.0000001;
+			//printf("HELLO: %lf", temp);
+			temp *= 100;
+			writeData[2] = (char)temp;
+			run = 0;
+		}
+	}while(run);
 }
 
 
 void divideUp(char writeData[]){
-
 		//char transfer1, transfer2 = (char)0;
 		int lvldB2 = (int)writeData[2];
 		int lvldB1 = (int)writeData[1];
