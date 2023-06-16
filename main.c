@@ -74,11 +74,11 @@ void handleCtrlC(int signal) {
     printf("\nCtrl+C received. Exiting program...\n");
 	char temp[2] = { 0b11111111, 0b11111111};
 	if(!WriteFile(hDevice, temp, 2, &bytesWritten, NULL)) {
-		printf("\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
+		printf("\n\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
 			CloseHandle(hDevice);
 		}else{
 			CloseHandle(hDevice);
-			printf("\nStop command sent to attenuator\n");
+			printf("\n\nStop command sent to attenuator\n");
 			printf("\nbye\n");
 		}
     exit(0);
@@ -165,6 +165,7 @@ int main(){
 			printf("Arduino may need to be rest if this takes too long. \n");
         	if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
             	if (bytesRead > 0){
+					printf("\nBYTES SIZE: %d\n", bytesRead);
                 	buffer[bytesRead] = '\0';
 					for(int i = 0; i < bytesRead; i++)
                 		printf("Received data: %d\n", buffer[i]);
@@ -176,10 +177,9 @@ int main(){
 		tempChar[0] = getch();
 		if( tempChar[0] == 'q' || tempChar[0] == 'Q'){
 			run = 0;
-			CloseHandle(hDevice);
 			char s[2] = { 0b11111111, 0b11111111};
 			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
-				printf("\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
+				printf("\n\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
 				CloseHandle(hDevice);
 				exit(0);
 			}else{
@@ -214,7 +214,7 @@ void prompt1(char writeData[]){
 		if(temp == 0.0){
 			char s[2] = { 0b11111111, 0b11111111};
 			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
-				printf("\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
+				printf("\n\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
 				CloseHandle(hDevice);
 				exit(0);
 			}else{
