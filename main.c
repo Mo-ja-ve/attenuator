@@ -72,6 +72,15 @@ DCB dcbSerialParams;
 // Signal handler function
 void handleCtrlC(int signal) {
     printf("\nCtrl+C received. Exiting program...\n");
+	char temp[2] = { 0b11111111, 0b11111111};
+	if(!WriteFile(hDevice, temp, 2, &bytesWritten, NULL)) {
+		printf("\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
+			CloseHandle(hDevice);
+		}else{
+			CloseHandle(hDevice);
+			printf("\nStop command sent to attenuator\n");
+			printf("\nbye\n");
+		}
     exit(0);
 }
 
@@ -128,13 +137,6 @@ int main(){
 	
 	writeData[0] = numAtten;
 
-	// printf("\n");
-	// printf("write data: %d", writeData[0]);
-	// printf("\n");
-	// printf("write data: %d", writeData[1]);
-	// printf("\n");
-	// printf("write data: %d", writeData[2]);
-	// printf("\n");
 	prompt1(writeData);
 
 	do {
@@ -159,7 +161,8 @@ int main(){
 		}
 		bool stop = 1;
 		while (stop){
-			printf("\nWaiting for return...\n");
+			printf("\nWaiting for return... \n");
+			printf("Arduino may need to be rest if this takes too long. \n");
         	if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
             	if (bytesRead > 0){
                 	buffer[bytesRead] = '\0';
@@ -174,8 +177,17 @@ int main(){
 		if( tempChar[0] == 'q' || tempChar[0] == 'Q'){
 			run = 0;
 			CloseHandle(hDevice);
+			char s[2] = { 0b11111111, 0b11111111};
+			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
+				printf("\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
+				CloseHandle(hDevice);
+				exit(0);
+			}else{
+				printf("\nStop command sent to attenuator\n");
+				printf("\nbye\n");
+				exit(0);
+			}
 		}
-
 		if(tempChar[0] == 'r'|| tempChar[0] == 'R')
 			prompt1(writeData);
 
@@ -189,20 +201,29 @@ int main(){
 void prompt1(char writeData[]){
 	bool run = 1;
 	do {
+		printf("\nEnter 0 to stop\n");
 		printf("Enter: ");
-		double temp =0.0;
+		double temp = 0.0;
 		scanf(" %lf", &temp);// Add a space before %lf to skip leading whitespace
-		printf("\ntest: %lf\n", temp);
-        
+		//input[strlen(input)] = '\0';
+
 		// Clear the input buffer
         int c;
         while ((c = getchar()) != '\n' && c != EOF);
-	
-        // Check if 'q' or 'Q' is entered
-        if (tolower((char)temp) == 'q') {
-            printf("\nExiting program...\n");
-            exit(0);
-        }
+
+		if(temp == 0.0){
+			char s[2] = { 0b11111111, 0b11111111};
+			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
+				printf("\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
+				CloseHandle(hDevice);
+				exit(0);
+			}else{
+				printf("\nStop command sent to attenuator\n");
+				printf("\n  bye\n");
+				CloseHandle(hDevice);
+				exit(0);
+			}
+		}
 
 		if(temp < 0.03 || temp > 63.97){
 			printf("\nError, input %lf is out of range\n", temp);
