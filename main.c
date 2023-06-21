@@ -74,12 +74,14 @@ void handleCtrlC(int signal) {
     printf("\nCtrl+C received. Exiting program...\n");
 	char temp[2] = { 0b11111111, 0b11111111};
 	if(!WriteFile(hDevice, temp, 2, &bytesWritten, NULL)) {
-		printf("\n\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
+		printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n", GetLastError());
 			CloseHandle(hDevice);
+			    exit(0);
 		}else{
 			CloseHandle(hDevice);
 			printf("\n\nStop command sent to attenuator\n");
 			printf("\nbye\n");
+			    exit(0);
 		}
     exit(0);
 }
@@ -133,8 +135,8 @@ int main(){
 	// numAtten = getch() 
 	printf("Enter r to stop and reset the program for new attenuation inputs\n");
 	printf("Enter the amount of attenuation to be produced in dB.\n");
-	printf("Min: 0.03  Max: 63.97\n\n");
-	
+	printf("Min: 0.03  Max: 63.97\n");
+
 	writeData[0] = numAtten;
 
 	prompt1(writeData);
@@ -179,20 +181,40 @@ int main(){
 			run = 0;
 			char s[2] = { 0b11111111, 0b11111111};
 			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
-				printf("\n\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
+				printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n", GetLastError());
 				CloseHandle(hDevice);
 				exit(0);
 			}else{
 				printf("\nStop command sent to attenuator\n");
 				printf("\nbye\n");
+				CloseHandle(hDevice);
 				exit(0);
 			}
 		}
-		if(tempChar[0] == 'r'|| tempChar[0] == 'R')
+
+		if( tempChar[0] == 's' || tempChar[0] == 'S'){
+			run = 0;
+			char s[2] = { 0b11111111, 0b11111111};
+			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
+				printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n");
+				printf("Error number: %lu\n", GetLastError());
+			}else{
+				printf("\nStop command sent to attenuator\n");
+			}
+		}
+
+		if(tempChar[0] == 'r'|| tempChar[0] == 'R'){
+			char s[2] = { 0b11111111, 0b11111111};
+			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
+				printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n");
+				printf("Error number: %lu\n", GetLastError());
+			}else{
+				printf("\nStop command sent to attenuator\n");
+			}
 			prompt1(writeData);
+		}
 
 	}while(run);
-	//printf("Data written to the USB device: %s\n", writeData);
 
 	return 0;
 }
@@ -201,11 +223,10 @@ int main(){
 void prompt1(char writeData[]){
 	bool run = 1;
 	do {
-		printf("\nEnter 0 to stop\n");
+		printf("\nEnter 0 to quit and stop attenuator(s).\n");
 		printf("Enter: ");
 		double temp = 0.0;
 		scanf(" %lf", &temp);// Add a space before %lf to skip leading whitespace
-		//input[strlen(input)] = '\0';
 
 		// Clear the input buffer
         int c;
@@ -214,7 +235,8 @@ void prompt1(char writeData[]){
 		if(temp == 0.0){
 			char s[2] = { 0b11111111, 0b11111111};
 			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
-				printf("\n\nAlert, Failed to stop attenuator(s)!\n", GetLastError());
+				printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n");
+				printf("Error number: %lu\n", GetLastError());
 				CloseHandle(hDevice);
 				exit(0);
 			}else{
@@ -231,7 +253,6 @@ void prompt1(char writeData[]){
 		}else{
 			writeData[1] = (char)((int)floor(temp));
 			temp = (temp - floor(temp)) + 0.0000001;
-			//printf("HELLO: %lf", temp);
 			temp *= 100;
 			writeData[2] = (char)temp;
 			run = 0;
@@ -256,27 +277,22 @@ void divideUp(char writeData[]){
 				break;
 
 			temp = pins[i]*100.0;
-			//printf("lvldB2: %d\n", lvldB2);
-			//printf("temp: %d\n", temp);
 			 
 			if( lvldB2 == (int)(temp) ){
-				printf("hello! 1 ");
+
 				if(i <= 7){
 					writeData[0] = lookUp[i] | writeData[0];
 					break;
 				}else{
-					printf("look up I: %d\n", lookUp[i]);
-					printf("write data: %d\n", writeData[1]);
-
 					writeData[1] = lookUp[i] | writeData[1];
-					printf("\nI: %d\n", i);
-					printf("hello!: %d\n", writeData[1]);
 					break;
 				}
 			}
 
-			if(lvldB2 <= 3)
-				writeData[1] = writeData[1] | lookUp[14];
+			if(lvldB2 < 7 && lvldB2 > 3){
+				writeData[0] = writeData[0] | lookUp[0];
+				lvldB2 -= 6;
+			}
 
 			if(pins[i] < 1.0 && pins[i] != 0){
 				if(lvldB2 % (int)(pins[i]*100 + 0.0000001) != 0 && lvldB2 % (int)(pins[i]*100 + 0.0000001) != lvldB2){
@@ -305,8 +321,10 @@ void divideUp(char writeData[]){
 			}
 		}
 
+		printf("\n\nHere is another test!: %d\n", lvldB2);
+
 		if(lvldB2 <= 5)
-			writeData[0] = writeData[0] | writeData[14];
+			writeData[1] = writeData[1] | lookUp[14];
 
 		for(int i = 14; i >= 0 ; i--){
 			
@@ -358,7 +376,6 @@ void divideUp(char writeData[]){
 						break;
 					}
 				}
-				//printf("MOD: %d\n",lvldB);
 			}
 		}
 }
