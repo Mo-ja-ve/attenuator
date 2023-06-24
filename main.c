@@ -25,12 +25,14 @@
 
 //pin controls for GM Series 349 and 349H
 double pins[15] = {
+	//pins 1 through 6 will are no longer used due to program updates requested by Dr Bartone
     0.06,   // 1 
     0.13,   // 2
     0.0,    // 3  ANALOG INPUT / STROBE LATCH
     0.0,    // 4  GND
     0.25,   // 5
     0.5,    // 6
+	//pins 1 through 6 will are no longer used due to program updates requested by Dr Bartone
     1.0,    // 7
     2.0,    // 8
     4.0,    // 9
@@ -45,12 +47,14 @@ double pins[15] = {
 //  last 2 bits are used to set number of attenuators used 1 through 4  ( [0,1,2,3] )
 //  bit set 1 indicates that pin will be set on, bit set 0 indicates pin that pin will be set off
 char lookUp[15] = {
+	//pins 1 through 6 will are no longer used due to program updates requested by Dr Bartone
     0b10000000, // 0.06
     0b01000000, // 0.13
     0b00100000, // 0.0   // ANALOG INPUT / STROBE LATCH
     0b00010000, // 0.0   // GND
     0b00001000, // 0.25
     0b00000100, // 0.5
+	//pins 1 through 6 will are no longer used due to program updates requested by Dr Bartone
     0b00000010, // 1.0
     0b00000001, // 2.0
     0b10000000, // 4.0
@@ -62,12 +66,13 @@ char lookUp[15] = {
     0b00000100  // 0.03
 };
 
-
 HANDLE hDevice;  // Handle to the USB device
 char *writeData;  // Data to be written
 DWORD bytesWritten, bytesRead;  // Variable to store the number of bytes written
 bool run = 1;
 DCB dcbSerialParams;
+
+int INSTR_LENGTH = 0;
 
 // Signal handler function
 void handleCtrlC(int signal) {
@@ -88,20 +93,15 @@ void handleCtrlC(int signal) {
 
 void divideUp(char writeData[]);
 void prompt1(char writeData[]);
+int convertToInteger(char* numStr);
 
-int main(){
+int main(int argc, char* argv[]){
+
+	FILE *file;
+    char **instr;  // 2D array to store lines
+    int lineCount = 0;
 
     // Register the signal handler for SIGINT (Ctrl+C)
-    signal(SIGINT, handleCtrlC);
-
-	writeData = (char*)malloc(5);
-
-	char numAtten = 'H';
-
-	int lvldB = 0.0;
-	char buffer[256];
-	char tempChar[10];
-
 	hDevice = CreateFile(
 		"COM5",  // Replace COMx with the appropriate USB port identifier (e.g., "COM1" or "COM2")
 		(GENERIC_WRITE | GENERIC_READ),
@@ -117,104 +117,197 @@ int main(){
 	}
 
 	dcbSerialParams.BaudRate = CBR_9600; // Replace with your baud rate
-    dcbSerialParams.ByteSize = 8;
-    dcbSerialParams.StopBits = ONESTOPBIT;
-    dcbSerialParams.Parity = NOPARITY;
-    if (!SetCommState(hDevice, &dcbSerialParams)){
-        printf("Error setting serial port state.\n");
-        CloseHandle(hDevice);
-        return 1;
-    }
+	dcbSerialParams.ByteSize = 8;
+	dcbSerialParams.StopBits = ONESTOPBIT;
+	dcbSerialParams.Parity = NOPARITY;
 
-	printf("\n\n");
-	printf("Hello.\n");
-	printf("Welcome to the GM 349 attenuator control program for Windows.\n\n");
-	printf("Enter q to quit the program.\n");
-	printf("Please select number of attenuators you will be using.\n");
-	printf("Num of available attenuator options 1 - 4: \n");
-	// numAtten = getch() 
-	printf("Enter r to stop and reset the program for new attenuation inputs\n");
-	printf("Enter the amount of attenuation to be produced in dB.\n");
-	printf("Min: 0.03  Max: 63.97\n");
+	if (!SetCommState(hDevice, &dcbSerialParams)){
+		printf("Error setting serial port state.\n");
+		CloseHandle(hDevice);
+		return 1;
+	}
 
-	writeData[0] = numAtten;
+	if( argc == 2) {
 
-	prompt1(writeData);
+		printf("Hello.\n");
+		printf("Welcome to the GM 349 attenuator control program for Windows.\n\n");
+		printf("You have supplied command line arguments which have actived this programs 'run using input file mode'. \n");
+		printf("Choosing to run this pogram with no file name supplied will instead activate the programs manual user mode, you will be prompted with further instructions once you enter that mode.\n\n");
+    	printf("The file supplied is %s\n", argv[1]);
 
-	do {
-
-		printf("\nwrite data 1: %d\n",writeData[1]);
-		printf("\nwrite data 2: %d\n",writeData[2]);
-		divideUp(writeData);
-		printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(writeData[0]));
-		printf("\n");
-		printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(writeData[1]));
-
-		printf("\nwrite data 1: %d\n",writeData[0]);
-		printf("\nwrite data 2: %d\n",writeData[1]);
-
-
-		if(!WriteFile(hDevice, writeData, 2, &bytesWritten, NULL)) {
-			printf("Failed to write to the USB device. Error code: %lu\n", GetLastError());
-			CloseHandle(hDevice);
-			return 1;
-		}else{
-			printf("Wrote 2 bytes to controller succesfully, enter r to stop and reset or q to quit\n",bytesWritten);
+		//  this will send a signal to the arduino to tell it to behave in "file mode"
+		char s[2] = { 0b11111111, 0b11111110};
+		if (!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
+			printf("\n\nAlert, Failed to communicate with the attenuator!", GetLastError());
+		} else {
+			printf("\n");
+			printf("\nRead from file mode signal has been sent to attenuator.\n");
 		}
-		bool stop = 1;
-		while (stop){
-			printf("\nWaiting for return... \n");
-			printf("Arduino may need to be rest if this takes too long. \n");
-        	if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
-            	if (bytesRead > 0){
-					printf("\nBYTES SIZE: %d\n", bytesRead);
-                	buffer[bytesRead] = '\0';
-					for(int i = 0; i < bytesRead; i++)
-                		printf("Received data: %d\n", buffer[i]);
-					stop = 0;
-            	}
-        	}
+		
+		file = fopen("text.txt", "r");
+   		if (file == NULL) {
+        	printf("Failed to open the file. are you sure you typed the files name correctly?\n");
+        	return 1;
     	}
-		printf("\n\nEnter r for new attenuation level, s to stop attenuator, or q to quit the program");
-		tempChar[0] = getch();
-		if( tempChar[0] == 'q' || tempChar[0] == 'Q'){
-			run = 0;
-			char s[2] = { 0b11111111, 0b11111111};
-			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
-				printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n", GetLastError());
+		
+		char byte = 0;
+		int j = 0;
+		int i = 0;
+
+		instr = malloc(sizeof(char *));
+		instr[0] = malloc(sizeof(char));
+
+		do{
+			byte = fgetc(file);
+			
+			if(byte == EOF)
+				break;
+
+			if(byte == '\n'){
+				instr[i][j] = '\0';
+				i++;
+				j = 0;
+				instr = realloc(instr, sizeof(char*) * (i+1));
+				instr[i] = malloc(sizeof(char));
+			}else{
+				j++;
+				instr[i] = realloc(instr[i], sizeof(char) * (j+1));
+				instr[i][j-1] = byte;
+			}
+
+		} while(byte != EOF);
+
+		INSTR_LENGTH = i;
+		j = 0;
+		char *temp;
+		int result = 0;
+		temp = malloc(sizeof(char));
+		for(i = 0; i<INSTR_LENGTH; i++){
+			while(instr[i][j] != '\0'){
+				if(instr[i][j] != ' '){
+					temp = realloc(temp, sizeof(char)*(j+1));
+					temp[j] = instr[i][j];
+				}else{
+					temp = realloc(temp, sizeof(char)*(j+1));
+					temp[j] = '\0';
+					// printf("%c", temp[0]);
+					// printf("%c", temp[1]);
+					// printf("%c", temp[2]);
+					//printf("%c", temp[3]);
+					result = convertToInteger(temp);
+					printf("Result: %d \n", result);
+				}
+				//printf("%c",instr[i][j]);
+				j++;
+			}
+			j = 0;
+			printf("\n");
+		}
+
+   } else if( argc > 2 ) {
+     	printf("Too many arguments supplied.\n");
+		
+   }else {
+
+		signal(SIGINT, handleCtrlC);
+
+		writeData = (char*)malloc(5);
+
+		char numAtten = 'H';
+
+		int lvldB = 0.0;
+		char buffer[256];
+		char tempChar[10];
+
+		printf("\n\n");
+		printf("Hello.\n");
+		printf("Welcome to the GM 349 attenuator control program for Windows.\n\n");
+		printf("Enter q to quit the program.\n");
+		printf("Please select number of attenuators you will be using.\n");
+		printf("Num of available attenuator options 1 - 4: \n");
+		// numAtten = getch() 
+		printf("Enter r to stop and reset the program for new attenuation inputs\n");
+		printf("Enter the amount of attenuation to be produced in dB.\n");
+		printf("Min: 0.03  Max: 63.97\n");
+
+		writeData[0] = numAtten;
+
+		prompt1(writeData);
+
+		do {
+			printf("\nwrite data 1: %d\n",writeData[1]);
+			printf("\nwrite data 2: %d\n",writeData[2]);
+			divideUp(writeData);
+			printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(writeData[0]));
+			printf("\n");
+			printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(writeData[1]));
+
+			printf("\nwrite data 1: %d\n",writeData[0]);
+			printf("\nwrite data 2: %d\n",writeData[1]);
+
+
+			if(!WriteFile(hDevice, writeData, 2, &bytesWritten, NULL)) {
+				printf("Failed to write to the USB device. Error code: %lu\n", GetLastError());
 				CloseHandle(hDevice);
-				exit(0);
+				return 1;
 			}else{
-				printf("\nStop command sent to attenuator\n");
-				printf("\nbye\n");
-				CloseHandle(hDevice);
-				exit(0);
+				printf("Wrote 2 bytes to controller succesfully, enter r to stop and reset or q to quit\n",bytesWritten);
 			}
-		}
-
-		if( tempChar[0] == 's' || tempChar[0] == 'S'){
-			run = 0;
-			char s[2] = { 0b11111111, 0b11111111};
-			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
-				printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n");
-				printf("Error number: %lu\n", GetLastError());
-			}else{
-				printf("\nStop command sent to attenuator\n");
+			bool stop = 1;
+			while (stop){
+				printf("\nWaiting for return... \n");
+				printf("Arduino may need to be rest if this takes too long. \n");
+				if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
+					if (bytesRead > 0){
+						printf("\nBYTES SIZE: %d\n", bytesRead);
+						buffer[bytesRead] = '\0';
+						for(int i = 0; i < bytesRead; i++)
+							printf("Received data: %d\n", buffer[i]);
+						stop = 0;
+					}
+				}
 			}
-		}
-
-		if(tempChar[0] == 'r'|| tempChar[0] == 'R'){
-			char s[2] = { 0b11111111, 0b11111111};
-			if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
-				printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n");
-				printf("Error number: %lu\n", GetLastError());
-			}else{
-				printf("\nStop command sent to attenuator\n");
+			printf("\n\nEnter r for new attenuation level, s to stop attenuator, or q to quit the program");
+			tempChar[0] = getch();
+			if( tempChar[0] == 'q' || tempChar[0] == 'Q'){
+				run = 0;
+				char s[2] = { 0b11111111, 0b11111111};
+				if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
+					printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n", GetLastError());
+					CloseHandle(hDevice);
+					exit(0);
+				}else{
+					printf("\nStop command sent to attenuator\n");
+					printf("\nbye\n");
+					CloseHandle(hDevice);
+					exit(0);
+				}
 			}
-			prompt1(writeData);
-		}
 
-	}while(run);
+			if( tempChar[0] == 's' || tempChar[0] == 'S'){
+				run = 0;
+				char s[2] = { 0b11111111, 0b11111111};
+				if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
+					printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n");
+					printf("Error number: %lu\n", GetLastError());
+				}else{
+					printf("\nStop command sent to attenuator\n");
+				}
+			}
+
+			if(tempChar[0] == 'r'|| tempChar[0] == 'R'){
+				char s[2] = { 0b11111111, 0b11111111};
+				if(!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
+					printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n\n");
+					printf("Error number: %lu\n", GetLastError());
+				}else{
+					printf("\nStop command sent to attenuator\n");
+				}
+				prompt1(writeData);
+			}
+
+		}while(run);
+	}
 
 	return 0;
 }
@@ -378,4 +471,18 @@ void divideUp(char writeData[]){
 				}
 			}
 		}
+}
+
+int convertToInteger(char* numStr) {
+    int result = 0;
+    int i = 0;
+					printf("%c", numStr[0]);
+					printf("%c", numStr[1]);
+					printf("%c", numStr[2]);
+    while (numStr[i] != '\0') {
+        result = result * 10 + (numStr[i] - '0');
+        i++;
+    }
+
+    return result;
 }
