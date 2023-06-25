@@ -138,7 +138,7 @@ int main(int argc, char* argv[]){
 		//  this will send a signal to the arduino to tell it to behave in "file mode"
 		char s[2] = { 0b11111111, 0b11111110};
 		if (!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
-			printf("\n\nAlert, Failed to communicate with the attenuator!", GetLastError());
+			printf("\n\nALERT! Failed to send activation signal to arduino! Connection may have broken!\n\n", GetLastError());
 		} else {
 			printf("\n");
 			printf("\nRead from file mode signal has been sent to attenuator.\n");
@@ -177,31 +177,67 @@ int main(int argc, char* argv[]){
 
 		} while(byte != EOF);
 
-		INSTR_LENGTH = i;
+		INSTR_LENGTH = i+1;
 		j = 0;
 		char *temp;
 		int result = 0;
+		int k = 0;
+		int **intInstr;
+		intInstr = malloc(sizeof(int *));
+		intInstr[0] = malloc(sizeof(int ));
+		
 		temp = malloc(sizeof(char));
+
+		// for(int ii = 0; ii < INSTR_LENGTH; ii++){
+		// 	int jj = 0;
+		// 	while(instr[ii][jj] != '\0'){
+		// 		printf("%c", instr[ii][jj]);
+		// 		jj++;
+		// 	}
+		// 	printf("\n");
+		// }
+
 		for(i = 0; i<INSTR_LENGTH; i++){
+			int j2 = 0;
+			intInstr = realloc(intInstr, sizeof(int*)*(i+1));
+			intInstr[i] = malloc(sizeof(int));
 			while(instr[i][j] != '\0'){
 				if(instr[i][j] != ' '){
-					temp = realloc(temp, sizeof(char)*(j+1));
-					temp[j] = instr[i][j];
+					temp = realloc(temp, sizeof(char)*(j2+1));
+					temp[j2] = instr[i][j];
+					j2++;
 				}else{
-					temp = realloc(temp, sizeof(char)*(j+1));
-					temp[j] = '\0';
-					// printf("%c", temp[0]);
-					// printf("%c", temp[1]);
-					// printf("%c", temp[2]);
-					//printf("%c", temp[3]);
+					temp = realloc(temp, sizeof(char)*(j2+1));
+					temp[j2] = '\0';
 					result = convertToInteger(temp);
-					printf("Result: %d \n", result);
+					intInstr[i] = realloc(intInstr[i], sizeof(int)*(k+1));
+					intInstr[i][k] = result;
+					k++;
+					j2=0;
 				}
-				//printf("%c",instr[i][j]);
 				j++;
 			}
-			j = 0;
+			temp = realloc(temp, sizeof(char)*(j2+1));
+			temp[j2] = '\0';
+			result = convertToInteger(temp);
+
+			intInstr[i] = realloc(intInstr[i], sizeof(int)*(k+1));
+			intInstr[i][k] = result;
+			intInstr[i] = realloc(intInstr[i], sizeof(int)*(k+2));
+			intInstr[i][k+1] = -1;
+			k =0;
+			j =0;
+			j2=0;
+		}
+
+		int a = 0;
+		for(int z = 0; z<INSTR_LENGTH; z++){
+			while(intInstr[z][a] != -1){
+				printf("%d ", intInstr[z][a]);
+				a++;
+			}
 			printf("\n");
+			a=0;
 		}
 
    } else if( argc > 2 ) {
@@ -476,9 +512,7 @@ void divideUp(char writeData[]){
 int convertToInteger(char* numStr) {
     int result = 0;
     int i = 0;
-					printf("%c", numStr[0]);
-					printf("%c", numStr[1]);
-					printf("%c", numStr[2]);
+
     while (numStr[i] != '\0') {
         result = result * 10 + (numStr[i] - '0');
         i++;
