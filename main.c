@@ -599,36 +599,35 @@ int launchInstr(int **intInstr){
 
 	for(int i = 0; i <INSTR_LENGTH; i++){
 	//this is where the insturctions will be sent to the arduino
-		while(intInstr[i][j] != -1){
-			if(j == 0){
 				char temp[256];
 				char sig[1] = { 0b11111100 };
+				char sig[2] = { 0b11111111 };
+				
 				char buffer2[256];
-				//WriteFile(hDevice, sig, 1, &bytesWritten, NULL);
-				itoa(intInstr[i][j],temp,10);
 				bool stop = 1;
 				while (stop){
 					printf("\nWaiting for return... \n");
 					printf("Arduino may need to be reset if this takes too long. \n");
 					if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
 						if (bytesRead == 1){
-							// printf("\nBYTES SIZE: %d\n", bytesRead);
-							// buffer[bytesRead] = '\0';
-							// for(int i = 0; i < bytesRead; i++)
-							// 	printf("Received data: %d\n", buffer[i]);
 							if(buffer[0] == 'z'){
 								int numBytes = 0;
+								int temp2 = 0;
+
+								while(pinOuts[i][numBytes] != '\0')
+									numBytes++;
+
+								WriteFile(hDevice, pinOuts[i], numBytes, &bytesWritten, NULL);
+								delay(intInstr[i][0]);
+
 								// while(1){
 								// 	printf("SECOND WAIT,");
 								// 	if (ReadFile(hDevice, buffer2, sizeof(buffer2) - 1, &bytesRead, NULL))
 								// 	for(int i = 0; i < bytesRead; i++)
 								// 		printf("%d", buffer2[i]);
 								// }
-								while(temp[numBytes]!='\0')
-									numBytes++;
 								//printf("\n%d\nnum: ",numBytes);
 								WriteFile(hDevice, temp, numBytes+1, &bytesWritten, NULL);
-
 								if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
 									for(int i = 0; i < bytesRead; i++)
 										printf("%c", buffer[i]);
@@ -639,18 +638,8 @@ int launchInstr(int **intInstr){
 						}
 					}
 				}
-				j++;
-			}
-			switch(intInstr[i][j]){
-				case 1:
-					j++;
-
-				break;
-			}
+			
 		}
-		printf("\n");
-		j = 0;
-	}
 }
 
 char setPins(int lvldB){
