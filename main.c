@@ -464,6 +464,8 @@ int launchInstr(int **intInstr){
 			pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 			switch(intInstr[i][j]){
 				case 1:
+					if(lvldB > 63)
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 1 is larger than 63dB!\n", i);
 					//printf("char1: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][pinOutsWidth]));
 					pinOuts[i][pinOutsWidth] |= setPins(lvldB);
 					//printf("	char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][pinOutsWidth]));
@@ -471,93 +473,112 @@ int launchInstr(int **intInstr){
 				break;
 
 				case 12:
+					if(lvldB > 126)
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 1 2 is larger than 126dB!\n", i);
+
 					if(lvldB <= 63){
 						int temp = lvldB / 2;
 						pinOuts[i][pinOutsWidth] |= setPins(temp);;;
 						temp = lvldB - temp;
 						pinOutsWidth++;
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = setPins(temp) | 0b01000000;
+						pinOuts[i][pinOutsWidth] =  0b01000000 | setPins(temp);
 					}else{
 						int temp = lvldB - 63;
 						//printf("\n TEMP: %d \n", temp);
 						pinOuts[i][pinOutsWidth] |= 0b00111111;
 						pinOutsWidth++;
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = setPins(temp) | 0b01000000;
+						pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(temp);
 					}
 					pinOutsWidth++;
 				break;
 
 				case 2:
+					if(lvldB > 63)
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 2 is larger than 63dB!\n", i);
+
 					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB);
 					pinOutsWidth++;
 				break;
 
 				case 3:
+					if(lvldB > 63)
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 3 is larger than 63dB!\n", i);
+
 					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB);
 					pinOutsWidth++;
 				break;
 
 				case 34:
+					if(lvldB > 126)
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 3 4 is larger than 126dB!\n", i);
+					
 					if(lvldB <= 63){
 						int temp = lvldB / 2;
-						pinOuts[i][pinOutsWidth] |= setPins(temp);
+						pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(temp);
 						temp = lvldB - temp;
 						pinOutsWidth++;
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = setPins(temp) | 0b10000000;
+						pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(temp);
 					}else{
 						int temp = lvldB - 63;
 						//printf("\n TEMP: %d \n", temp);
 						pinOuts[i][pinOutsWidth] |= 0b01111111;
 						pinOutsWidth++;
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = setPins(temp) | 0b11000000;
+						pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(temp);
 					}
 					pinOutsWidth++;
 
 				break;
 
 				case 4:
+					if(lvldB > 63)
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 4 is larger than 63dB!\n", i);
+
 					pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(lvldB);
 					pinOutsWidth++;
 				break;
 
 				case 123:
-						pinOuts[i][pinOutsWidth] |= setPins(lvldB/3);
-						pinOutsWidth++;
-						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/3);
-						pinOutsWidth++;
-						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/3 + (lvldB % 3));
-						//printf("\nHere we go!: %d", 65/3);
-						pinOutsWidth++;
+					if(lvldB > 63)
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 123 is larger than 189dB!\n", i);
+
+					pinOuts[i][pinOutsWidth] |= setPins(lvldB/3);
+					pinOutsWidth++;
+					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/3);
+					pinOutsWidth++;
+					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/3 + (lvldB % 3));
+					//printf("\nHere we go!: %d", 65/3);
+					pinOutsWidth++;
 				break;
 
 				case 1234:
-						pinOuts[i][pinOutsWidth] = 0b00000000 | setPins(lvldB/4);
-						pinOutsWidth++;
-						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/4);
-						pinOutsWidth++;
-						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/4);
-						pinOutsWidth++;
-						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/4 + (lvldB % 4));
-						//printf("\nHere we go!: %d", 65/3);
-						pinOutsWidth++;
+					if(lvldB > 252)
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 1234 is larger than 252dB!\n", i);
+					
+					pinOuts[i][pinOutsWidth] = 0b00000000 | setPins(lvldB/4);
+					pinOutsWidth++;
+					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/4);
+					pinOutsWidth++;
+					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/4);
+					pinOutsWidth++;
+					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/4 + (lvldB % 4));
+					//printf("\nHere we go!: %d", 65/3);
+					pinOutsWidth++;
 				break;
 			}
 			}
 			j++;
 		}
-
 		// if(i == 2)
 		// 	printf("\nPIN: %d \n",pinOutsWidth);
-		
 		pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 		pinOuts[i][pinOutsWidth] = '\0';
 		
@@ -581,7 +602,7 @@ int launchInstr(int **intInstr){
 		while(intInstr[i][j] != -1){
 			if(j == 0){
 				char temp[256];
-				char sig[1] = {0b11111100};
+				char sig[1] = { 0b11111100 };
 				char buffer2[256];
 				//WriteFile(hDevice, sig, 1, &bytesWritten, NULL);
 				itoa(intInstr[i][j],temp,10);
