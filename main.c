@@ -139,10 +139,23 @@ int main(int argc, char* argv[]){
 				instr[i] = realloc(instr[i], sizeof(char) * (j+1));
 				instr[i][j-1] = byte;
 			}
-
 		} while(byte != EOF);
 
-		INSTR_LENGTH = i+1;
+		INSTR_LENGTH = i;
+		instr = realloc(instr, sizeof(char*) * (INSTR_LENGTH));
+
+		j=0;
+		
+		// for(int i = 0; i < INSTR_LENGTH; i++){
+		// 	while(instr[i][j] != '\0'){
+		// 		printf("%c",instr[i][j]);
+		// 		j++;
+		// 	}
+		// 	j=0;
+		// 	//printf("I: %d", i);
+		// 	printf("\n");
+		// }
+		
 		j = 0;
 		char *temp;
 		int result = 0;
@@ -160,7 +173,7 @@ int main(int argc, char* argv[]){
 		// 	}
 		// 	printf("\n");
 		// }
-
+		
 		for(i = 0; i<INSTR_LENGTH; i++){
 			int j2 = 0;
 			intInstr = realloc(intInstr, sizeof(int*)*(i+1));
@@ -200,6 +213,25 @@ int main(int argc, char* argv[]){
 				printf("%d ", intInstr[z][a]);
 				a++;
 			}
+			// if(intInstr[INSTR_LENGTH][a] == -1){
+			// int j2 = 0;
+			// 	while(instr[INSTR_LENGTH][j] != '\0'){
+			// 		if(instr[INSTR_LENGTH][j] != ' '){
+			// 			temp = realloc(temp, sizeof(char)*(j2+1));
+			// 			temp[j2] = instr[INSTR_LENGTH][j];
+			// 			j2++;
+			// 		}else{
+			// 			temp = realloc(temp, sizeof(char)*(j2+1));
+			// 			temp[j2] = '\0';
+			// 			result = convertToInteger(temp);
+			// 			intInstr[i] = realloc(intInstr[i], sizeof(int)*(k+1));
+			// 			intInstr[i][k] = result;
+			// 			k++;
+			// 			j2=0;
+			// 		}
+			// 		j++;
+			// 	}
+			// }
 			printf("\n");
 			a=0;
 		}
@@ -484,7 +516,7 @@ int launchInstr(int **intInstr){
 						pinOuts[i][pinOutsWidth] = setPins(temp) | 0b11000000;
 					}
 					pinOutsWidth++;
-					
+
 				break;
 
 				case 4:
@@ -523,8 +555,8 @@ int launchInstr(int **intInstr){
 			j++;
 		}
 
-		if(i == 2)
-			printf("\nPIN: %d \n",pinOutsWidth);
+		// if(i == 2)
+		// 	printf("\nPIN: %d \n",pinOutsWidth);
 		
 		pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 		pinOuts[i][pinOutsWidth] = '\0';
