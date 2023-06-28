@@ -71,7 +71,7 @@ char *writeData;  // Data to be written
 DWORD bytesWritten, bytesRead;  // Variable to store the number of bytes written
 bool run = 1;
 DCB dcbSerialParams;
-
+int **intInstr;
 int INSTR_LENGTH = 0;
 
 // Signal handler function
@@ -94,38 +94,12 @@ void handleCtrlC(int signal) {
 void divideUp(char writeData[]);
 void prompt1(char writeData[]);
 int convertToInteger(char* numStr);
+int launchInstr(int **intInstr);
+char setPins(int lvldB);
 
 int main(int argc, char* argv[]){
-
 	FILE *file;
     char **instr;  // 2D array to store lines
-    int lineCount = 0;
-
-    // Register the signal handler for SIGINT (Ctrl+C)
-	hDevice = CreateFile(
-		"COM5",  // Replace COMx with the appropriate USB port identifier (e.g., "COM1" or "COM2")
-		(GENERIC_WRITE | GENERIC_READ),
-		0,
-		NULL,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL
-	);
-	if (hDevice == INVALID_HANDLE_VALUE) {
-		printf("Failed to open the USB device. Error code: %lu\n", GetLastError());
-		return 1;
-	}
-
-	dcbSerialParams.BaudRate = CBR_9600; // Replace with your baud rate
-	dcbSerialParams.ByteSize = 8;
-	dcbSerialParams.StopBits = ONESTOPBIT;
-	dcbSerialParams.Parity = NOPARITY;
-
-	if (!SetCommState(hDevice, &dcbSerialParams)){
-		printf("Error setting serial port state.\n");
-		CloseHandle(hDevice);
-		return 1;
-	}
 
 	if( argc == 2) {
 
@@ -134,15 +108,6 @@ int main(int argc, char* argv[]){
 		printf("You have supplied command line arguments which have actived this programs 'run using input file mode'. \n");
 		printf("Choosing to run this pogram with no file name supplied will instead activate the programs manual user mode, you will be prompted with further instructions once you enter that mode.\n\n");
     	printf("The file supplied is %s\n", argv[1]);
-
-		//  this will send a signal to the arduino to tell it to behave in "file mode"
-		char s[2] = { 0b11111111, 0b11111110};
-		if (!WriteFile(hDevice, s, 2, &bytesWritten, NULL)) {
-			printf("\n\nALERT! Failed to send activation signal to arduino! Connection may have broken!\n\n", GetLastError());
-		} else {
-			printf("\n");
-			printf("\nRead from file mode signal has been sent to attenuator.\n");
-		}
 		
 		file = fopen("text.txt", "r");
    		if (file == NULL) {
@@ -182,7 +147,6 @@ int main(int argc, char* argv[]){
 		char *temp;
 		int result = 0;
 		int k = 0;
-		int **intInstr;
 		intInstr = malloc(sizeof(int *));
 		intInstr[0] = malloc(sizeof(int ));
 		
@@ -240,6 +204,8 @@ int main(int argc, char* argv[]){
 			a=0;
 		}
 
+		launchInstr(intInstr);
+
    } else if( argc > 2 ) {
      	printf("Too many arguments supplied.\n");
 		
@@ -280,7 +246,6 @@ int main(int argc, char* argv[]){
 
 			printf("\nwrite data 1: %d\n",writeData[0]);
 			printf("\nwrite data 2: %d\n",writeData[1]);
-
 
 			if(!WriteFile(hDevice, writeData, 2, &bytesWritten, NULL)) {
 				printf("Failed to write to the USB device. Error code: %lu\n", GetLastError());
@@ -387,6 +352,340 @@ void prompt1(char writeData[]){
 			run = 0;
 		}
 	}while(run);
+}
+
+int launchInstr(int **intInstr){
+   // Register the signal handler for SIGINT (Ctrl+C)
+   	char buffer[256];
+
+	hDevice = CreateFile(
+		"COM5",  // Replace COMx with the appropriate USB port identifier (e.g., "COM1" or "COM2")
+		(GENERIC_WRITE | GENERIC_READ),
+		0,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+	if (hDevice == INVALID_HANDLE_VALUE) {
+		printf("Failed to open the USB device. Error code: %lu\n", GetLastError());
+		return 1;
+	}
+
+	dcbSerialParams.BaudRate = CBR_9600; // Replace with your baud rate
+	dcbSerialParams.ByteSize = 8;
+	dcbSerialParams.StopBits = ONESTOPBIT;
+	dcbSerialParams.Parity = NOPARITY;
+
+	if (!SetCommState(hDevice, &dcbSerialParams)){
+		printf("Error setting serial port state.\n");
+		CloseHandle(hDevice);
+		return 1;
+	}
+
+	//  this will send a signal to the arduino to tell it to behave in "file mode"
+	char s[1] = { 'a' };
+
+	if (!WriteFile(hDevice, s, 1, &bytesWritten, NULL)) {
+		printf("\n\nALERT! Failed to send activation signal to arduino! Connection may have broken!\n\n", GetLastError());
+	} else {
+		printf("\n");
+		printf("\nRead from file mode signal has been sent to attenuator.\n");
+	}
+
+	char **pinOuts;
+	int j = 0;
+	pinOuts = malloc(sizeof(char*));
+	pinOuts[0] = malloc(sizeof(char));
+
+	for(int i = 0; i <INSTR_LENGTH; i++){
+		pinOuts = realloc(pinOuts, sizeof(char*)*(i+1));
+		pinOuts[i] = malloc(sizeof(char));
+		while(intInstr[i][j] != -1){
+			pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(j+1));
+			pinOuts[i][j] = 0b00000000;
+			j++;
+		}
+		j = 0;
+	}
+
+	j = 1;
+	int lvldB = 0;
+	int pinOutsWidth = 0;
+	for(int i = 0; i < INSTR_LENGTH; i++){
+		pinOuts[i] = realloc(pinOuts[i],sizeof(char));
+	}
+	j=0;
+	
+	for(int i = 0; i < INSTR_LENGTH; i++){
+		while(pinOuts[i][j] != '\0'){
+			printf("  char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][j]));
+			j++;
+		}
+		printf("\n");
+	}
+
+	for(int i = 0; i < INSTR_LENGTH; i++){
+		while(intInstr[i][j] != -1){
+			if(j % 2 != 0){
+			lvldB = intInstr[i][j+1];
+			pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+			switch(intInstr[i][j]){
+				case 1:
+					//printf("char1: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][pinOutsWidth]));
+					pinOuts[i][pinOutsWidth] |= setPins(lvldB);
+					//printf("	char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][pinOutsWidth]));
+					pinOutsWidth++;
+				break;
+
+				case 12:
+					if(lvldB <= 63){
+						int temp = lvldB / 2;
+						pinOuts[i][pinOutsWidth] |= setPins(temp);;;
+						temp = lvldB - temp;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = setPins(temp) | 0b01000000;
+					}else{
+						int temp = lvldB - 63;
+						//printf("\n TEMP: %d \n", temp);
+						pinOuts[i][pinOutsWidth] |= 0b00111111;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = setPins(temp) | 0b01000000;
+					}
+					pinOutsWidth++;
+				break;
+
+				case 2:
+					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB);
+					pinOutsWidth++;
+				break;
+
+				case 3:
+					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB);
+					pinOutsWidth++;
+				break;
+
+				case 34:
+					if(lvldB <= 63){
+						int temp = lvldB / 2;
+						pinOuts[i][pinOutsWidth] |= setPins(temp);
+						temp = lvldB - temp;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = setPins(temp) | 0b10000000;
+					}else{
+						int temp = lvldB - 63;
+						//printf("\n TEMP: %d \n", temp);
+						pinOuts[i][pinOutsWidth] |= 0b01111111;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = setPins(temp) | 0b11000000;
+					}
+					pinOutsWidth++;
+					
+				break;
+
+				case 4:
+					pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(lvldB);
+					pinOutsWidth++;
+				break;
+
+				case 123:
+						pinOuts[i][pinOutsWidth] |= setPins(lvldB/3);
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/3);
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/3 + (lvldB % 3));
+						//printf("\nHere we go!: %d", 65/3);
+						pinOutsWidth++;
+				break;
+
+				case 1234:
+						pinOuts[i][pinOutsWidth] = 0b00000000 | setPins(lvldB/4);
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/4);
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/4);
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/4 + (lvldB % 4));
+						//printf("\nHere we go!: %d", 65/3);
+						pinOutsWidth++;
+				break;
+			}
+			}
+			j++;
+		}
+
+		if(i == 2)
+			printf("\nPIN: %d \n",pinOutsWidth);
+		
+		pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+		pinOuts[i][pinOutsWidth] = '\0';
+		
+		pinOutsWidth = 0;
+		j = 0;
+	}
+	
+	j=0;
+	for(int i = 0; i < INSTR_LENGTH; i++){
+		printf("%d ",i);
+		while(pinOuts[i][j] != '\0'){
+			printf("  char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][j]));
+			j++;
+		}
+		j=0;
+		printf("\n");
+	}
+
+	for(int i = 0; i <INSTR_LENGTH; i++){
+	//this is where the insturctions will be sent to the arduino
+		while(intInstr[i][j] != -1){
+			if(j == 0){
+				char temp[256];
+				char sig[1] = {0b11111100};
+				char buffer2[256];
+				//WriteFile(hDevice, sig, 1, &bytesWritten, NULL);
+				itoa(intInstr[i][j],temp,10);
+				bool stop = 1;
+				while (stop){
+					printf("\nWaiting for return... \n");
+					printf("Arduino may need to be reset if this takes too long. \n");
+					if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
+						if (bytesRead == 1){
+							// printf("\nBYTES SIZE: %d\n", bytesRead);
+							// buffer[bytesRead] = '\0';
+							// for(int i = 0; i < bytesRead; i++)
+							// 	printf("Received data: %d\n", buffer[i]);
+							if(buffer[0] == 'z'){
+								int numBytes = 0;
+								// while(1){
+								// 	printf("SECOND WAIT,");
+								// 	if (ReadFile(hDevice, buffer2, sizeof(buffer2) - 1, &bytesRead, NULL))
+								// 	for(int i = 0; i < bytesRead; i++)
+								// 		printf("%d", buffer2[i]);
+								// }
+								while(temp[numBytes]!='\0')
+									numBytes++;
+								//printf("\n%d\nnum: ",numBytes);
+								WriteFile(hDevice, temp, numBytes+1, &bytesWritten, NULL);
+
+								if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
+									for(int i = 0; i < bytesRead; i++)
+										printf("%c", buffer[i]);
+								
+								printf("\n");
+							}
+							stop = 0;
+						}
+					}
+				}
+				j++;
+			}
+			switch(intInstr[i][j]){
+				case 1:
+					j++;
+
+				break;
+			}
+		}
+		printf("\n");
+		j = 0;
+	}
+}
+
+char setPins(int lvldB){
+	
+	char s_Pins = 0b00000000;
+	//printf("Hello from return pins: %d", lvldB);
+	if (lvldB == 63) {
+		return 0b01111111;
+	} else {
+	for (int k = 14; k >= 0; k--) {
+		if(lvldB == 0){
+			printf("Return pins: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(s_Pins));
+			return s_Pins;
+		}
+        if (pins[k] >= 1.0) {
+            if (lvldB == (int)(pins[k] + 0.0000001)) {
+                if (k == 6) {
+                    s_Pins = s_Pins | 0b00100000;
+                    lvldB = 0;
+                    break;
+                }
+                if (k == 7) {
+                    s_Pins = s_Pins | 0b00010000;
+                    lvldB = 0;
+                    break;
+                }
+                if (k == 8) {
+                    s_Pins = s_Pins | 0b00001000;
+                    lvldB = 0;
+                    break;
+                }
+                if (k == 9) {
+                    s_Pins = s_Pins | 0b00000100;
+                    lvldB = 0;
+                    break;
+                }
+                if (k == 10) {
+                    s_Pins = s_Pins | 0b00000010;
+                    lvldB = 0;
+                    break;
+                }
+                if (k == 11) {
+                    s_Pins = s_Pins | 0b00000001;
+                    lvldB = 0;
+                    break;
+                }
+            }
+            if (lvldB % (int)(pins[k] + 0.0000001) != 0 && lvldB % (int)(pins[k] + 0.0000001) != lvldB) {
+                switch (k) {
+                    case 6:
+                        //printf("k: %d\n",k);
+                        s_Pins = s_Pins | 0b00100000;
+                        lvldB -= (int)(pins[k] + 0.0000001);
+                        break;
+                    case 7:
+                        //printf("k: %d\n",k);
+                        s_Pins = s_Pins | 0b00010000;
+                        lvldB -= (int)(pins[k] + 0.0000001);
+                        break;
+                    case 8:
+                        //printf("k: %d\n",k);
+                        s_Pins = s_Pins | 0b00001000;
+                        lvldB -= (int)(pins[k] + 0.0000001);
+                        break;
+                    case 9:
+                        //printf("k: %d\n",k);
+                        s_Pins = s_Pins | 0b00000100;
+                        lvldB -= (int)(pins[k] + 0.0000001);
+                        break;
+                    case 10:
+                        //printf("k: %d\n",k);
+                        s_Pins = s_Pins | 0b00000010;
+                        lvldB -= (int)(pins[k] + 0.0000001);
+                        break;
+                    case 11:
+                        //printf("k: %d\n",k);
+                        s_Pins = s_Pins | 0b00000001;
+                        lvldB -= (int)(pins[k] + 0.0000001);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+    //printf("char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(s_Pins));
+	}
+	return s_Pins;
 }
 
 
