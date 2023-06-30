@@ -3,6 +3,7 @@ int i = 0;
 int instr[2] = { 0, 0 };
 int pinArray[11] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 int pinArray2[11] = { 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
+String sPins = "";
 
 void setup() {
   // put your setup code here, to run once:
@@ -24,20 +25,107 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
+  //command to set arduino to run in 'program read from file mode'
+  if(Serial.read() == 'a'){
+        // for(int i = 0; i < 11; i++){
+        //   digitalWrite(pinArray2[i], HIGH);
+        // }
+    char temp;
+    //Serial.write('z');
+    //Serial.flush();
+    int stop = 1;
+    while(stop)
+      while( Serial.available() > 0){
+        temp = Serial.read();
+        //Serial.write(temp);
+        if(temp != '\0'){
+          sPins += temp;
+        }else{
+          stop = 0;
+        }
+      }
+    
+    for(int i = 0; i < sPins.length(); i++)
+      for(int j = 7; j >= 0; j--)
+        (sPins[i] & (1 << j)) ? digitalWrite(27-j, HIGH) : digitalWrite(27-j, LOW);
+
+          // switch(j){
+          //   case 7:
+          //       pinArray[0] = 0;
+          //     break;
+          //   case 6:
+          //       pinArray[1] = 0;
+          //     break;
+          //   case 5:
+          //       digitalWrite(22, HIGH);// 1dB
+          //     break;
+          //   case 4:
+          //       digitalWrite(23, HIGH);// 2dB
+          //     break;
+          //   case 3:
+          //       digitalWrite(24, HIGH);// 4dB
+          //     break;
+          //   case 2:
+          //       digitalWrite(25, HIGH);// 8dB
+          //     break;
+          //   case 1:
+          //       digitalWrite(26, HIGH);// 16dB
+          //     break;
+          //   case 0:
+          //       digitalWrite(27, HIGH);// 32dB
+          //     break;
+          // } :
+          // switch(j){
+          //   case 7:
+          //       pinArray[0] = 0;
+          //     break;
+          //   case 6:
+          //       pinArray[1] = 0;
+          //     break;
+          //   case 5:
+          //       digitalWrite(22, LOW;// 1dB
+          //     break;
+          //   case 4:
+          //       digitalWrite(23, LOW);// 2dB
+          //     break;
+          //   case 3:
+          //       digitalWrite(24, LOW);// 4dB
+          //     break;
+          //   case 2:
+          //       digitalWrite(25, LOW);// 8dB
+          //     break;
+          //   case 1:
+          //       digitalWrite(26, LOW);// 16dB
+          //     break;
+          //   case 0:
+          //       digitalWrite(27, LOW);// 32dB
+          //     break;
+          // };
+
+  }else
   if (Serial.available() == 2) {
     
-    //incomingByte = Serial.read();
+    Serial.flush();
     instr[0] = Serial.read();
     instr[1] = Serial.read();
-    //incomingByte = Serial.read();
-    //instr[1] = incomingByte;
-    //Serial.print("received: ");
-    //Serial.println(instr[0]);
-    //Serial.println(instr[1]);
-    // say what you got:
-    //Serial.print("received: ");
+    
+    char temp1 = (char)instr[0];
+    char temp2 = (char)instr[1];
+    
+    Serial.print(temp1);
+    Serial.print(temp2);
+    //Serial.print(instr[1],DEC);
+  
+  if(instr[0] == 0b11111111 && instr[1] == 0b11111111){
+    instr[0] = 0b00000000;
+    instr[1] = 0b00000000;
+    for(int i = 0; i < 52; i++){
+      digitalWrite(i, LOW);
+    }
+    for(int i = 0; i < 11; i++){
+      pinArray[i] = 0;
+    }
   }
-
   for(int i = 7; i >= 0; i--){
       if(instr[0] & (1 << i))
         switch(i){
@@ -81,150 +169,8 @@ void loop() {
           break;
         }
   }
-
-  for(int i = 0; i < 11; i++){
+    for(int i = 0; i < 11; i++){
       digitalWrite(pinArray[i], HIGH);
-      // delay(50);
-      // digitalWrite(pinArray[i], LOW);
-      // delay(50);
+    }
   }
-  
-  // if(instr[0] == 0b11001111){
-  //       digitalWrite(22, HIGH);
-  //       delay(500);
-  //       digitalWrite(22, LOW);
-  //       delay(500);
-  //       digitalWrite(22, HIGH);
-  //       delay(500);
-  //       digitalWrite(22, LOW);
-  //       delay(500);
-  // }
-  // if(instr[1] == 0b11110000 ){
-  //       digitalWrite(23, HIGH);
-  //       delay(500);
-  //       digitalWrite(23, LOW);
-  //       delay(500);
-  //       digitalWrite(23, HIGH);
-  //       delay(500);
-  //       digitalWrite(23, LOW);
-  //       delay(500);
-  // }
-
-  // int temp = 0b01110000;
-  // Serial.println(" ");
-  // Serial.println((temp & (1 << 7)),BIN);
-
-  // if(instr[0] != 0 || instr[1] != 0){
-  //   //check if the 8th bit is set to 1
-  //   if (instr[0] & (1 << 7))  {
-  //       digitalWrite(22, HIGH);
-  //       delay(100);
-  //       digitalWrite(22, LOW);
-  //       delay(100);
-  //       digitalWrite(22, HIGH);
-  //       delay(100);
-  //       digitalWrite(22, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[0] & (1 << 6)) {
-  //       digitalWrite(23, HIGH);
-  //       delay(100);
-  //       digitalWrite(23, LOW);
-  //       delay(100);
-  //       digitalWrite(23, HIGH);
-  //       delay(100);
-  //       digitalWrite(23, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[0] & (1 << 5)) {
-  //       digitalWrite(24, HIGH);
-  //       delay(100);
-  //       digitalWrite(24, LOW);
-  //       delay(100);
-  //       digitalWrite(24, HIGH);
-  //       delay(100);
-  //       digitalWrite(24, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[0] & (1 << 4)) {
-  //       digitalWrite(25, HIGH);
-  //       delay(100);
-  //       digitalWrite(25, LOW);
-  //       delay(100);
-  //       digitalWrite(25, HIGH);
-  //       delay(100);
-  //       digitalWrite(25, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[0] & (1 << 3)) {
-  //       digitalWrite(26, HIGH);
-  //       delay(100);
-  //       digitalWrite(26, LOW);
-  //       delay(100);
-  //       digitalWrite(26, HIGH);
-  //       delay(100);
-  //       digitalWrite(26, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[0] & (1 << 2)) {
-  //       digitalWrite(27, HIGH);
-  //       delay(100);
-  //       digitalWrite(27, LOW);
-  //       delay(100);
-  //       digitalWrite(27, HIGH);
-  //       delay(100);
-  //       digitalWrite(27, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[0] & (1)) {
-  //       digitalWrite(28, HIGH);
-  //       delay(100);
-  //       digitalWrite(28, LOW);
-  //       delay(100);
-  //       digitalWrite(28, HIGH);
-  //       delay(100);
-  //       digitalWrite(28, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[1] & (1 << 7)) {
-  //       digitalWrite(29, HIGH);
-  //       delay(100);
-  //       digitalWrite(29, LOW);
-  //       delay(100);
-  //       digitalWrite(29, HIGH);
-  //       delay(100);
-  //       digitalWrite(29, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[1] & (1 << 6)) {
-  //       digitalWrite(30, HIGH);
-  //       delay(100);
-  //       digitalWrite(30, LOW);
-  //       delay(100);
-  //       digitalWrite(30, HIGH);
-  //       delay(100);
-  //       digitalWrite(30, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[1] & (1 << 5)) {
-  //       digitalWrite(31, HIGH);
-  //       delay(100);
-  //       digitalWrite(31, LOW);
-  //       delay(100);
-  //       digitalWrite(31, HIGH);
-  //       delay(100);
-  //       digitalWrite(31, LOW);
-  //       delay(100);
-  //   }
-  //   if (instr[1] & (1 << 4)) {
-  //       digitalWrite(32, HIGH);
-  //       delay(100);
-  //       digitalWrite(32, LOW);
-  //       delay(100);
-  //       digitalWrite(32, HIGH);
-  //       delay(100);
-  //       digitalWrite(32, LOW);
-  //       delay(100);
-  //   }
-  // }
 }
