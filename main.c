@@ -8,6 +8,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 //***  SOFTWARE PROPERTY OF OHIO UNIVERSITY - AVIONICS DEPARTMENT  ***//
 //***  ANDRE KALINICHENKO - SUMMER 2023  ***//
@@ -89,6 +90,19 @@ void handleCtrlC(int signal) {
 			    exit(0);
 		}
     exit(0);
+}
+
+void delay(int number_of_seconds)
+{
+    // Converting time into milli_seconds
+    int milli_seconds = 1000 * number_of_seconds;
+ 
+    // Storing start time
+    clock_t start_time = clock();
+ 
+    // looping till required time is not achieved
+    while (clock() < start_time + milli_seconds)
+        ;
 }
 
 void divideUp(char writeData[]);
@@ -415,16 +429,6 @@ int launchInstr(int **intInstr){
 		return 1;
 	}
 
-	//  this will send a signal to the arduino to tell it to behave in "file mode"
-	char s[1] = { 'a' };
-
-	if (!WriteFile(hDevice, s, 1, &bytesWritten, NULL)) {
-		printf("\n\nALERT! Failed to send activation signal to arduino! Connection may have broken!\n\n", GetLastError());
-	} else {
-		printf("\n");
-		printf("\nRead from file mode signal has been sent to attenuator.\n");
-	}
-
 	char **pinOuts;
 	int j = 0;
 	pinOuts = malloc(sizeof(char*));
@@ -449,26 +453,26 @@ int launchInstr(int **intInstr){
 	}
 	j=0;
 	
-	for(int i = 0; i < INSTR_LENGTH; i++){
-		while(pinOuts[i][j] != '\0'){
-			printf("  char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][j]));
-			j++;
-		}
-		printf("\n");
-	}
+	// for(int i = 0; i < INSTR_LENGTH; i++){
+	// 	while(pinOuts[i][j] != '\0'){
+	// 		printf("  char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][j]));
+	// 		j++;
+	// 	}
+	// 	printf("\n");
+	// }
 
 	for(int i = 0; i < INSTR_LENGTH; i++){
 		while(intInstr[i][j] != -1){
 			if(j % 2 != 0){
 			lvldB = intInstr[i][j+1];
 			pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+			pinOuts[i][pinOutsWidth] = 0b00000000; 
 			switch(intInstr[i][j]){
 				case 1:
 					if(lvldB > 63)
-						printf("\nWarning! Argument supplied on line %d to attenuator(s) 1 is larger than 63dB!\n", i);
+					printf("\nWarning! Argument supplied on line %d to attenuator(s) 1 is larger than 63dB!\n", i);
 					//printf("char1: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][pinOutsWidth]));
 					pinOuts[i][pinOutsWidth] |= setPins(lvldB);
-					//printf("	char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][pinOutsWidth]));
 					pinOutsWidth++;
 				break;
 
@@ -597,53 +601,68 @@ int launchInstr(int **intInstr){
 		printf("\n");
 	}
 
+
+	//  this will send a signal to the arduino to tell it to behave in "file mode"
+	char s[1] = { 'a' };
+	char temp      [256];
+	char buffer2   [256];
+	char sig[1]  = { 0b11111100 };
+	char sig2[1] = { 0b11111111 };
+		
 	for(int i = 0; i <INSTR_LENGTH; i++){
 	//this is where the insturctions will be sent to the arduino
-				char temp[256];
-				char sig[1] = { 0b11111100 };
-				char sig[2] = { 0b11111111 };
-				
-				char buffer2[256];
-				bool stop = 1;
-				while (stop){
-					printf("\nWaiting for return... \n");
-					printf("Arduino may need to be reset if this takes too long. \n");
-					if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
-						if (bytesRead == 1){
-							if(buffer[0] == 'z'){
-								int numBytes = 0;
-								int temp2 = 0;
-
-								while(pinOuts[i][numBytes] != '\0')
-									numBytes++;
-
-								WriteFile(hDevice, pinOuts[i], numBytes, &bytesWritten, NULL);
-								delay(intInstr[i][0]);
-
-								// while(1){
-								// 	printf("SECOND WAIT,");
-								// 	if (ReadFile(hDevice, buffer2, sizeof(buffer2) - 1, &bytesRead, NULL))
-								// 	for(int i = 0; i < bytesRead; i++)
-								// 		printf("%d", buffer2[i]);
-								// }
-								//printf("\n%d\nnum: ",numBytes);
-								WriteFile(hDevice, temp, numBytes+1, &bytesWritten, NULL);
-								if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
-									for(int i = 0; i < bytesRead; i++)
-										printf("%c", buffer[i]);
-								
-								printf("\n");
-							}
-							stop = 0;
-						}
-					}
-				}
-			
+		if (!WriteFile(hDevice, s, 1, &bytesWritten, NULL)) {
+			printf("\n\nALERT! Failed to send activation signal to arduino! Connection may have broken!\n\n", GetLastError());
+		} else {
+			printf("\n");
+			printf("\nRead from file mode signal has been sent to attenuator.\n");
 		}
+
+		bool stop = 1;
+		while (stop) {
+			printf("\nWaiting for return... \n");
+			printf("Arduino may need to be reset if this takes too long. \n");
+			//if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
+				//if (bytesRead == 1) {
+					//if (buffer[0] == 'z') {
+						printf("\nhello!\n");
+						int numBytes = 0;
+
+						while (pinOuts[i][numBytes] != '\0')
+							numBytes++;
+
+						WriteFile(hDevice, pinOuts[i], numBytes+1, &bytesWritten, NULL);
+						delay(intInstr[i][0]);
+
+						// while(1){
+						// 	printf("SECOND WAIT,");
+						// 	if (ReadFile(hDevice, buffer2, sizeof(buffer2) - 1, &bytesRead, NULL))
+						// 	for(int i = 0; i < bytesRead; i++)
+						// 		printf("%d", buffer2[i]);
+						// }
+						//printf("\n%d\nnum: ",numBytes);
+						//WriteFile(hDevice, temp, numBytes + 1, &bytesWritten, NULL);
+
+						// if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
+						// 	if(bytesRead > 0){
+						// 		for (int i = 0; i < bytesRead; i++)
+						// 			printf("%c", buffer[i]);
+						// 	}
+						// printf("\n");
+					//}
+					stop = 0;
+				//}
+			//}
+		}
+		//char tempChar = 'y';
+		//WriteFile(hDevice, 'y', 1, &bytesWritten, NULL);
+	}
 }
 
 char setPins(int lvldB){
-	
+
+	printf("\nlvl db: %d\n", lvldB);
+
 	char s_Pins = 0b00000000;
 	//printf("Hello from return pins: %d", lvldB);
 	if (lvldB == 63) {
@@ -727,6 +746,7 @@ char setPins(int lvldB){
     }
     //printf("char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(s_Pins));
 	}
+
 	return s_Pins;
 }
 
