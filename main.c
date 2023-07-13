@@ -10,8 +10,6 @@
 #include <math.h>
 #include <time.h>
 
-//***  SOFTWARE PROPERTY OF OHIO UNIVERSITY - AVIONICS DEPARTMENT  ***//
-//***  ANDRE KALINICHENKO - SUMMER 2023  ***//
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)  \
