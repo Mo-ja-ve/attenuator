@@ -3,21 +3,35 @@ int i = 0;
 int instr[2] = { 0, 0 };
 int pinArray[11] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 int pinArray2[11] = { 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
+
 String sPins = "";
 
 void setup() {
   // put your setup code here, to run once:
-    pinMode(22, OUTPUT); //1
-    pinMode(23, OUTPUT); //2
-    pinMode(24, OUTPUT); //3
-    pinMode(25, OUTPUT); //4
-    pinMode(26, OUTPUT); //5
-    pinMode(27, OUTPUT); //6 
-    pinMode(28, OUTPUT); //7
-    pinMode(29, OUTPUT); //8
-    pinMode(30, OUTPUT); //9
-    pinMode(31, OUTPUT); //10
-    pinMode(32, OUTPUT); //11
+    pinMode(22, OUTPUT); 
+    pinMode(23, OUTPUT); 
+    pinMode(24, OUTPUT); 
+    pinMode(25, OUTPUT); 
+    pinMode(26, OUTPUT); 
+    pinMode(27, OUTPUT);  
+    pinMode(28, OUTPUT); 
+    pinMode(29, OUTPUT); 
+    pinMode(30, OUTPUT); 
+    pinMode(31, OUTPUT); 
+    pinMode(32, OUTPUT); 
+    pinMode(33, OUTPUT);
+    pinMode(34, OUTPUT); 
+    pinMode(35, OUTPUT); 
+    pinMode(36, OUTPUT); 
+    pinMode(37, OUTPUT); 
+    pinMode(38, OUTPUT); 
+    pinMode(39, OUTPUT);  
+    pinMode(40, OUTPUT); 
+    pinMode(41, OUTPUT); 
+    pinMode(42, OUTPUT); 
+    pinMode(43, OUTPUT); 
+    pinMode(44, OUTPUT); 
+    pinMode(45, OUTPUT);
     
     Serial.begin(9600);     // opens serial port, sets data rate to 9600 bps
 }
@@ -45,14 +59,25 @@ void loop() {
         }
       }
     
-    for(int i = 0; i < sPins.length(); i++)
-      for(int j = 7; j >= 0; j--)
-        (sPins[i] & (1 << j)) ? digitalWrite(27-j, HIGH) : digitalWrite(27-j, LOW);
 
-          // switch(j){
+    // if(sPins[2] == 152)
+    //   for(i = 21; i < 28; i++)
+    //     digitalWrite(i, HIGH);
+
+    //Serial.write(sPins[2]);
+    
+    // for(int i = 0; i < sPins.length(); i++)
+    //   for(int j = 0; j < 6; j++)
+    //     (sPins[i] & (1 << j)) ? digitalWrite( ( ( ( (sPins[i] >> 6) - 0b11111100)+1)*6)+16 + j, HIGH) 
+    //                           : digitalWrite( ( ( ( (sPins[i] >> 6) - 0b11111100)+1)*6)+16 + j, LOW);
+    for(int i = 0; i < sPins.length(); i++)
+      for(int j = 0; j < 6; j++)
+        (sPins[i] & (1 << j)) ? digitalWrite( 22 + j, HIGH) 
+                              : digitalWrite( 22 + j, LOW);
+          //switch(j){
           //   case 7:
           //       pinArray[0] = 0;
-          //     break;
+          //     break; 
           //   case 6:
           //       pinArray[1] = 0;
           //     break;

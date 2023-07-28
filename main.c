@@ -10,6 +10,8 @@
 #include <math.h>
 #include <time.h>
 
+//***  SOFTWARE PROPERTY OF OHIO UNIVERSITY - AVIONICS DEPARTMENT  ***//
+//***  ANDRE KALINICHENKO - SUMMER 2023  ***//
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)  \
@@ -568,10 +570,10 @@ int launchInstr(int **intInstr){
 					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/4);
 					pinOutsWidth++;
 					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/4);
+					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/4);
 					pinOutsWidth++;
 					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/4 + (lvldB % 4));
+					pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(lvldB/4 + (lvldB % 4));
 					//printf("\nHere we go!: %d", 65/3);
 					pinOutsWidth++;
 				break;
@@ -622,32 +624,29 @@ int launchInstr(int **intInstr){
 			printf("Arduino may need to be reset if this takes too long. \n");
 			//if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
 				//if (bytesRead == 1) {
-					//if (buffer[0] == 'z') {
-						printf("\nhello!\n");
+					//if (buffer[0] == 'z') { 
 						int numBytes = 0;
 
-						while (pinOuts[i][numBytes] != '\0')
+						while (pinOuts[i][numBytes] != '\0'){
+							//printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][numBytes]));
 							numBytes++;
-
+						}
 						WriteFile(hDevice, pinOuts[i], numBytes+1, &bytesWritten, NULL);
 						delay(intInstr[i][0]);
 
-						// while(1){
-						// 	printf("SECOND WAIT,");
-						// 	if (ReadFile(hDevice, buffer2, sizeof(buffer2) - 1, &bytesRead, NULL))
-						// 	for(int i = 0; i < bytesRead; i++)
-						// 		printf("%d", buffer2[i]);
-						// }
-						//printf("\n%d\nnum: ",numBytes);
-						//WriteFile(hDevice, temp, numBytes + 1, &bytesWritten, NULL);
+					// 	int stop2 = 1;
+					// 	while(stop2){
+					// 	if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
+					// 		if(bytesRead > 0){
+					// 			for (int i = 0; i < bytesRead; i++){
+					// 				printf("\n");
+					// 				printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(buffer[i]));
+					// 			}
+					// 			stop2 = 0;
+					// 		}
+					// 	printf("\n");
+					// }
 
-						// if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
-						// 	if(bytesRead > 0){
-						// 		for (int i = 0; i < bytesRead; i++)
-						// 			printf("%c", buffer[i]);
-						// 	}
-						// printf("\n");
-					//}
 					stop = 0;
 				//}
 			//}
