@@ -123,7 +123,7 @@ int main(int argc, char* argv[]){
 		printf("Choosing to run this pogram with no file name supplied will instead activate the programs manual user mode, you will be prompted with further instructions once you enter that mode.\n\n");
     	printf("The file supplied is %s\n", argv[1]);
 		
-		file = fopen("text.txt", "r");
+		file = fopen(argv[1], "r");
    		if (file == NULL) {
         	printf("Failed to open the file. are you sure you typed the files name correctly?\n");
         	return 1;
@@ -221,6 +221,7 @@ int main(int argc, char* argv[]){
 			j2=0;
 		}
 
+		
 		int a = 0;
 		for(int z = 0; z<INSTR_LENGTH; z++){
 			while(intInstr[z][a] != -1){
@@ -465,14 +466,18 @@ int launchInstr(int **intInstr){
 		while(intInstr[i][j] != -1){
 			if(j % 2 != 0){
 			lvldB = intInstr[i][j+1];
+			// if(intInstr[i][j+1]==0)
+			// 	printf("ahoy!\n");
 			pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 			pinOuts[i][pinOutsWidth] = 0b00000000; 
 			switch(intInstr[i][j]){
 				case 1:
 					if(lvldB > 63)
-					printf("\nWarning! Argument supplied on line %d to attenuator(s) 1 is larger than 63dB!\n", i);
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 1 is larger than 63dB!\n", i);
 					//printf("char1: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][pinOutsWidth]));
+
 					pinOuts[i][pinOutsWidth] |= setPins(lvldB);
+
 					pinOutsWidth++;
 				break;
 
@@ -581,9 +586,9 @@ int launchInstr(int **intInstr){
 			}
 			j++;
 		}
-		// if(i == 2)
-		// 	printf("\nPIN: %d \n",pinOutsWidth);
+
 		pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+		//printf("\npinouts width: %d\n",pinOutsWidth);
 		pinOuts[i][pinOutsWidth] = '\0';
 		
 		pinOutsWidth = 0;
@@ -601,8 +606,7 @@ int launchInstr(int **intInstr){
 		printf("\n");
 	}
 
-
-	//  this will send a signal to the arduino to tell it to behave in "file mode"
+	//  this 'a' will send a signal to the arduino to tell it to behave in "file mode"
 	char s[1] = { 'a' };
 	char temp      [256];
 	char buffer2   [256];
@@ -624,13 +628,22 @@ int launchInstr(int **intInstr){
 			printf("Arduino may need to be reset if this takes too long. \n");
 			//if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
 				//if (bytesRead == 1) {
-					//if (buffer[0] == 'z') { 
+					//if (buffer[0] == 'z') {
 						int numBytes = 0;
+
+						// if(pinOuts[i][0] ==  '\0'){
+						// 	realloc(pinOuts[i], sizeof(char)*(2));
+						// 	pinOuts[i][0] = 0b00000000;
+						// 	pinOuts[i][1] = '\0';
+						// }
+
 
 						while (pinOuts[i][numBytes] != '\0'){
 							//printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][numBytes]));
 							numBytes++;
 						}
+
+						// printf("bytes: %d\n",numBytes);
 						WriteFile(hDevice, pinOuts[i], numBytes+1, &bytesWritten, NULL);
 						delay(intInstr[i][0]);
 
@@ -662,6 +675,7 @@ char setPins(int lvldB){
 
 	char s_Pins = 0b00000000;
 	//printf("Hello from return pins: %d", lvldB);
+
 	if (lvldB == 63) {
 		return 0b01111111;
 	} else {
