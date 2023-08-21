@@ -76,6 +76,7 @@ int **intInstr;
 int INSTR_LENGTH = 0;
 
 // Signal handler function
+// Register the signal handler for SIGINT (Ctrl+C)
 void handleCtrlC(int signal) {
     printf("\nCtrl+C received. Exiting program...\n");
 	char temp[2] = { 0b11111111, 0b11111111};
@@ -160,16 +161,6 @@ int main(int argc, char* argv[]){
 
 		j=0;
 		
-		// for(int i = 0; i < INSTR_LENGTH; i++){
-		// 	while(instr[i][j] != '\0'){
-		// 		printf("%c",instr[i][j]);
-		// 		j++;
-		// 	}
-		// 	j=0;
-		// 	//printf("I: %d", i);
-		// 	printf("\n");
-		// }
-		
 		j = 0;
 		char *temp;
 		int result = 0;
@@ -179,15 +170,7 @@ int main(int argc, char* argv[]){
 		
 		temp = malloc(sizeof(char));
 
-		// for(int ii = 0; ii < INSTR_LENGTH; ii++){
-		// 	int jj = 0;
-		// 	while(instr[ii][jj] != '\0'){
-		// 		printf("%c", instr[ii][jj]);
-		// 		jj++;
-		// 	}
-		// 	printf("\n");
-		// }
-		
+
 		for(i = 0; i<INSTR_LENGTH; i++){
 			int j2 = 0;
 			intInstr = realloc(intInstr, sizeof(int*)*(i+1));
@@ -221,32 +204,15 @@ int main(int argc, char* argv[]){
 			j2=0;
 		}
 
-		
+		printf("\nFile read: \n");
+
 		int a = 0;
 		for(int z = 0; z<INSTR_LENGTH; z++){
 			while(intInstr[z][a] != -1){
 				printf("%d ", intInstr[z][a]);
 				a++;
 			}
-			// if(intInstr[INSTR_LENGTH][a] == -1){
-			// int j2 = 0;
-			// 	while(instr[INSTR_LENGTH][j] != '\0'){
-			// 		if(instr[INSTR_LENGTH][j] != ' '){
-			// 			temp = realloc(temp, sizeof(char)*(j2+1));
-			// 			temp[j2] = instr[INSTR_LENGTH][j];
-			// 			j2++;
-			// 		}else{
-			// 			temp = realloc(temp, sizeof(char)*(j2+1));
-			// 			temp[j2] = '\0';
-			// 			result = convertToInteger(temp);
-			// 			intInstr[i] = realloc(intInstr[i], sizeof(int)*(k+1));
-			// 			intInstr[i][k] = result;
-			// 			k++;
-			// 			j2=0;
-			// 		}
-			// 		j++;
-			// 	}
-			// }
+
 			printf("\n");
 			a=0;
 		}
@@ -256,7 +222,7 @@ int main(int argc, char* argv[]){
    } else if( argc > 2 ) {
      	printf("Too many arguments supplied.\n");
 		
-   }else {
+   }else {// no file mode (!!DEPRECATED!!)
 
 		signal(SIGINT, handleCtrlC);
 
@@ -274,7 +240,6 @@ int main(int argc, char* argv[]){
 		printf("Enter q to quit the program.\n");
 		printf("Please select number of attenuators you will be using.\n");
 		printf("Num of available attenuator options 1 - 4: \n");
-		// numAtten = getch() 
 		printf("Enter r to stop and reset the program for new attenuation inputs\n");
 		printf("Enter the amount of attenuation to be produced in dB.\n");
 		printf("Min: 0.03  Max: 63.97\n");
@@ -402,10 +367,10 @@ void prompt1(char writeData[]){
 }
 
 int launchInstr(int **intInstr){
-   // Register the signal handler for SIGINT (Ctrl+C)
+   
    	char buffer[256];
 
-	hDevice = CreateFile(
+	hDevice = CreateFile(// create a handle to write to usb port
 		"COM5",  // Replace COMx with the appropriate USB port identifier (e.g., "COM1" or "COM2")
 		(GENERIC_WRITE | GENERIC_READ),
 		0,
@@ -454,27 +419,18 @@ int launchInstr(int **intInstr){
 	}
 	j=0;
 	
-	// for(int i = 0; i < INSTR_LENGTH; i++){
-	// 	while(pinOuts[i][j] != '\0'){
-	// 		printf("  char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][j]));
-	// 		j++;
-	// 	}
-	// 	printf("\n");
-	// }
-
 	for(int i = 0; i < INSTR_LENGTH; i++){
 		while(intInstr[i][j] != -1){
 			if(j % 2 != 0){
 			lvldB = intInstr[i][j+1];
-			// if(intInstr[i][j+1]==0)
-			// 	printf("ahoy!\n");
+
 			pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-			pinOuts[i][pinOutsWidth] = 0b00000000; 
+			pinOuts[i][pinOutsWidth] = 0b00000000;
+
 			switch(intInstr[i][j]){
 				case 1:
 					if(lvldB > 63)
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 1 is larger than 63dB!\n", i);
-					//printf("char1: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][pinOutsWidth]));
 
 					pinOuts[i][pinOutsWidth] |= setPins(lvldB);
 
@@ -489,17 +445,22 @@ int launchInstr(int **intInstr){
 						int temp = lvldB / 2;
 						pinOuts[i][pinOutsWidth] |= setPins(temp);;;
 						temp = lvldB - temp;
+
 						pinOutsWidth++;
+
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 						pinOuts[i][pinOutsWidth] =  0b01000000 | setPins(temp);
 					}else{
 						int temp = lvldB - 63;
-						//printf("\n TEMP: %d \n", temp);
+
 						pinOuts[i][pinOutsWidth] |= 0b00111111;
+
 						pinOutsWidth++;
+
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 						pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(temp);
 					}
+
 					pinOutsWidth++;
 				break;
 
@@ -508,6 +469,7 @@ int launchInstr(int **intInstr){
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 2 is larger than 63dB!\n", i);
 
 					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB);
+
 					pinOutsWidth++;
 				break;
 
@@ -516,6 +478,7 @@ int launchInstr(int **intInstr){
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 3 is larger than 63dB!\n", i);
 
 					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB);
+
 					pinOutsWidth++;
 				break;
 
@@ -527,14 +490,18 @@ int launchInstr(int **intInstr){
 						int temp = lvldB / 2;
 						pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(temp);
 						temp = lvldB - temp;
+
 						pinOutsWidth++;
+
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 						pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(temp);
 					}else{
 						int temp = lvldB - 63;
-						//printf("\n TEMP: %d \n", temp);
-						pinOuts[i][pinOutsWidth] |= 0b01111111;
+
+						pinOuts[i][pinOutsWidth] |= 0b10111111;
+
 						pinOutsWidth++;
+
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 						pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(temp);
 					}
@@ -547,6 +514,7 @@ int launchInstr(int **intInstr){
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 4 is larger than 63dB!\n", i);
 
 					pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(lvldB);
+					
 					pinOutsWidth++;
 				break;
 
@@ -555,13 +523,17 @@ int launchInstr(int **intInstr){
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 123 is larger than 189dB!\n", i);
 
 					pinOuts[i][pinOutsWidth] |= setPins(lvldB/3);
+
 					pinOutsWidth++;
+
 					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/3);
+
 					pinOutsWidth++;
+
 					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/3 + (lvldB % 3));
-					//printf("\nHere we go!: %d", 65/3);
+
 					pinOutsWidth++;
 				break;
 
@@ -570,16 +542,22 @@ int launchInstr(int **intInstr){
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 1234 is larger than 252dB!\n", i);
 					
 					pinOuts[i][pinOutsWidth] = 0b00000000 | setPins(lvldB/4);
+
 					pinOutsWidth++;
+
 					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB/4);
+
 					pinOutsWidth++;
+
 					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB/4);
+
 					pinOutsWidth++;
+
 					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 					pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(lvldB/4 + (lvldB % 4));
-					//printf("\nHere we go!: %d", 65/3);
+
 					pinOutsWidth++;
 				break;
 			}
@@ -588,18 +566,20 @@ int launchInstr(int **intInstr){
 		}
 
 		pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-		//printf("\npinouts width: %d\n",pinOutsWidth);
+
 		pinOuts[i][pinOutsWidth] = '\0';
 		
 		pinOutsWidth = 0;
 		j = 0;
 	}
 	
+	printf("\ndB Levels Converted To attennuator Byte Instructions:\n");
+	
 	j=0;
 	for(int i = 0; i < INSTR_LENGTH; i++){
-		printf("%d ",i);
+		printf(" %d: ",(i+1));
 		while(pinOuts[i][j] != '\0'){
-			printf("  char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][j]));
+			printf(" Byte: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][j]));
 			j++;
 		}
 		j=0;
@@ -618,70 +598,63 @@ int launchInstr(int **intInstr){
 		if (!WriteFile(hDevice, s, 1, &bytesWritten, NULL)) {
 			printf("\n\nALERT! Failed to send activation signal to arduino! Connection may have broken!\n\n", GetLastError());
 		} else {
+			
 			printf("\n");
-			printf("\nRead from file mode signal has been sent to attenuator.\n");
+			//printf("\nRead from file mode signal has been sent to attenuator.\n");
 		}
 
 		bool stop = 1;
-		while (stop) {
-			printf("\nWaiting for return... \n");
-			printf("Arduino may need to be reset if this takes too long. \n");
-			//if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
-				//if (bytesRead == 1) {
-					//if (buffer[0] == 'z') {
-						int numBytes = 0;
-
-						// if(pinOuts[i][0] ==  '\0'){
-						// 	realloc(pinOuts[i], sizeof(char)*(2));
-						// 	pinOuts[i][0] = 0b00000000;
-						// 	pinOuts[i][1] = '\0';
-						// }
-
-
-						while (pinOuts[i][numBytes] != '\0'){
-							//printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][numBytes]));
-							numBytes++;
-						}
-
-						// printf("bytes: %d\n",numBytes);
-						WriteFile(hDevice, pinOuts[i], numBytes+1, &bytesWritten, NULL);
-						delay(intInstr[i][0]);
-
-					// 	int stop2 = 1;
-					// 	while(stop2){
-					// 	if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
-					// 		if(bytesRead > 0){
-					// 			for (int i = 0; i < bytesRead; i++){
-					// 				printf("\n");
-					// 				printf("Leading text "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(buffer[i]));
-					// 			}
-					// 			stop2 = 0;
-					// 		}
-					// 	printf("\n");
-					// }
-
-					stop = 0;
-				//}
-			//}
+		
+		printf("\nLoading attenuator setting: ");
+		printf("\nTime: %d",intInstr[i][0]);
+		
+		j = 1;
+		printf("\n");
+		while(intInstr[i][j] != -1){
+			if(j == 1){
+				printf("\nAttenuator %d is being set for %ddB",intInstr[i][j],intInstr[i][j+1]);
+			}else{
+				if(j % 2 != 0)
+					printf("\nAttenuator %d is being set for %ddB",intInstr[i][j],intInstr[i][j+1]);
+			}
+			j++;
 		}
-		//char tempChar = 'y';
-		//WriteFile(hDevice, 'y', 1, &bytesWritten, NULL);
+		
+		while (stop) {
+			// printf("\nWaiting for return... \n");
+			// printf("Arduino may need to be reset if this takes too long. \n");
+
+			int numBytes = 0;
+
+			while (pinOuts[i][numBytes] != '\0'){
+				numBytes++;
+			}
+			
+			//printf("\nNum bytes: %d\n",numBytes);
+			// printf(" \npinOuts[0] Byte: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][0]));
+			// printf(" \npinOuts[1] Byte: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][1]));
+			// printf(" \npinOuts[2] Byte: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][2]));
+			// printf(" \npinOuts[3] Byte: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][3]));
+
+			WriteFile(hDevice, pinOuts[i], numBytes+1, &bytesWritten, NULL);
+			delay(intInstr[i][0]);
+			printf("\nFinished...");
+			stop = 0;
+		}
+
 	}
 }
 
 char setPins(int lvldB){
 
-	printf("\nlvl db: %d\n", lvldB);
-
 	char s_Pins = 0b00000000;
-	//printf("Hello from return pins: %d", lvldB);
 
 	if (lvldB == 63) {
 		return 0b01111111;
 	} else {
 	for (int k = 14; k >= 0; k--) {
 		if(lvldB == 0){
-			printf("Return pins: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(s_Pins));
+
 			return s_Pins;
 		}
         if (pins[k] >= 1.0) {
@@ -755,7 +728,7 @@ char setPins(int lvldB){
             }
         }
     }
-    //printf("char: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(s_Pins));
+
 	}
 
 	return s_Pins;
@@ -821,8 +794,6 @@ void divideUp(char writeData[]){
 				}
 			}
 		}
-
-		printf("\n\nHere is another test!: %d\n", lvldB2);
 
 		if(lvldB2 <= 5)
 			writeData[1] = writeData[1] | lookUp[14];
