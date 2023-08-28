@@ -57,7 +57,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   String sPins = "";
-  
+  //PORTA = 0b00010000;
    //PORTC = 0b00000000;
   //PORTB = 0b00100100;
   
@@ -70,6 +70,7 @@ void loop() {
 
   //command to set arduino to run in 'program read from file mode'
   if(Serial.read() == 'a'){
+    //PORTA = 0b00000001;
 
     char temp;
 
@@ -77,14 +78,19 @@ void loop() {
     while(stop)
       while( Serial.available() > 0){
         temp = Serial.read();
-        //Serial.write(temp);
-        if(temp != '\0'){
-          sPins += temp;
-        }else{
+        // if(temp == '0b01111010'){
+        //   temp = Serial.read();
+        // }else 
+        if(temp == '\0'){
           stop = 0;
+        }else{
+          sPins += temp;
         }
     }
 
+    //Serial.print(sPins[i]);
+    // Serial.print((sPins[i] >> 6),BIN);
+    
     for(int i = 0; i < sPins.length(); i++){
       if((sPins[i] >> 6) == 0)
         PORTA = sPins[i]; 
@@ -97,12 +103,16 @@ void loop() {
 
       if((sPins[i] >> 6) == -1)
         PORTB = sPins[i];
-
     }
 
   }else{
-    
+
+    if(Serial.read() == 'b')
+      if(Serial.read() == '\0'){
+        PORTC = 0b00000000;
+        PORTB = 0b00000000;
+        PORTL = 0b00000000;
+        PORTA = 0b00000000;
+      }
   }
-
-
 }
