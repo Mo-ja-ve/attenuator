@@ -75,11 +75,13 @@ DCB dcbSerialParams;
 int **intInstr;
 int INSTR_LENGTH = 0;
 
+int **resetInstr;
+
 // Signal handler function
 // Register the signal handler for SIGINT (Ctrl+C)
 void handleCtrlC(int signal) {
     printf("\nCtrl+C received. Exiting program...\n");
-	char temp[2] = { 0b11111111, 0b11111111};
+	char temp[2] = { 'b', '\0' };
 	if(!WriteFile(hDevice, temp, 2, &bytesWritten, NULL)) {
 		printf("\n\nAlert, Failed to stop attenuator(s)!(they may still be running).\n", GetLastError());
 			CloseHandle(hDevice);
@@ -116,6 +118,28 @@ int main(int argc, char* argv[]){
 	FILE *file;
     char **instr;  // 2D array to store lines
 
+	resetInstr = malloc(sizeof(int *)*4);
+	resetInstr[0] = malloc(sizeof(int)*4);
+	resetInstr[0][0] = 1;
+	resetInstr[0][1] = 1;
+	resetInstr[0][2] = 0;
+	resetInstr[0][3] = -1;
+	resetInstr[1] = malloc(sizeof(int)*3);
+	resetInstr[1][0] = 1;
+	resetInstr[1][1] = 2;
+	resetInstr[1][2] = 0;
+	resetInstr[1][3] = -1;
+	resetInstr[2] = malloc(sizeof(int)*3);
+	resetInstr[2][0] = 1;
+	resetInstr[2][1] = 3;
+	resetInstr[2][2] = 0;
+	resetInstr[2][3] = -1;
+	resetInstr[3] = malloc(sizeof(int)*3);
+	resetInstr[3][0] = 1;
+	resetInstr[3][1] = 4;
+	resetInstr[3][2] = 0;
+	resetInstr[3][3] = -1;
+
 	if( argc == 2) {
 
 		printf("Hello.\n");
@@ -124,6 +148,31 @@ int main(int argc, char* argv[]){
 		printf("Choosing to run this pogram with no file name supplied will instead activate the programs manual user mode, you will be prompted with further instructions once you enter that mode.\n\n");
     	printf("The file supplied is %s\n", argv[1]);
 		
+
+	hDevice = CreateFile(// create a handle to write to usb port
+		"COM5",  // Replace COMx with the appropriate USB port identifier (e.g., "COM1" or "COM2")
+		(GENERIC_WRITE | GENERIC_READ),
+		0,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+	if (hDevice == INVALID_HANDLE_VALUE) {
+		printf("Failed to open the USB device. Error code: %lu\n", GetLastError());
+		//return 1;
+	}
+
+	dcbSerialParams.BaudRate = CBR_9600; // Replace with your baud rate
+	dcbSerialParams.ByteSize = 8;
+	dcbSerialParams.StopBits = ONESTOPBIT;
+	dcbSerialParams.Parity = NOPARITY;
+
+	if (!SetCommState(hDevice, &dcbSerialParams)){
+		printf("Error setting serial port state.\n");
+		CloseHandle(hDevice);
+		//return 1;
+	}
 		file = fopen(argv[1], "r");
    		if (file == NULL) {
         	printf("Failed to open the file. are you sure you typed the files name correctly?\n");
@@ -169,7 +218,6 @@ int main(int argc, char* argv[]){
 		intInstr[0] = malloc(sizeof(int ));
 		
 		temp = malloc(sizeof(char));
-
 
 		for(i = 0; i<INSTR_LENGTH; i++){
 			int j2 = 0;
@@ -218,6 +266,8 @@ int main(int argc, char* argv[]){
 		}
 
 		launchInstr(intInstr);
+		INSTR_LENGTH = 4;
+		launchInstr(resetInstr);
 
    } else if( argc > 2 ) {
      	printf("Too many arguments supplied.\n");
@@ -262,7 +312,7 @@ int main(int argc, char* argv[]){
 			if(!WriteFile(hDevice, writeData, 2, &bytesWritten, NULL)) {
 				printf("Failed to write to the USB device. Error code: %lu\n", GetLastError());
 				CloseHandle(hDevice);
-				return 1;
+				//return 1;
 			}else{
 				printf("Wrote 2 bytes to controller succesfully, enter r to stop and reset or q to quit\n",bytesWritten);
 			}
@@ -370,31 +420,6 @@ int launchInstr(int **intInstr){
    
    	char buffer[256];
 
-	hDevice = CreateFile(// create a handle to write to usb port
-		"COM5",  // Replace COMx with the appropriate USB port identifier (e.g., "COM1" or "COM2")
-		(GENERIC_WRITE | GENERIC_READ),
-		0,
-		NULL,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL
-	);
-	if (hDevice == INVALID_HANDLE_VALUE) {
-		printf("Failed to open the USB device. Error code: %lu\n", GetLastError());
-		return 1;
-	}
-
-	dcbSerialParams.BaudRate = CBR_9600; // Replace with your baud rate
-	dcbSerialParams.ByteSize = 8;
-	dcbSerialParams.StopBits = ONESTOPBIT;
-	dcbSerialParams.Parity = NOPARITY;
-
-	if (!SetCommState(hDevice, &dcbSerialParams)){
-		printf("Error setting serial port state.\n");
-		CloseHandle(hDevice);
-		return 1;
-	}
-
 	char **pinOuts;
 	int j = 0;
 	pinOuts = malloc(sizeof(char*));
@@ -431,10 +456,20 @@ int launchInstr(int **intInstr){
 				case 1:
 					if(lvldB > 63)
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 1 is larger than 63dB!\n", i);
-
-					pinOuts[i][pinOutsWidth] |= setPins(lvldB);
-
+					
+					pinOuts[i][pinOutsWidth] =  0b00000001;
 					pinOutsWidth++;
+					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+					pinOuts[i][pinOutsWidth] = 0b00000000;
+					
+					pinOuts[i][pinOutsWidth] |= setPins(lvldB);
+					if(pinOuts[i][pinOutsWidth] == 0b00000000){
+						pinOuts[i][pinOutsWidth] = 0b00000001;
+					}else{
+						pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1; 
+					}
+					pinOutsWidth++;
+					
 				break;
 
 				case 12:
@@ -443,67 +478,144 @@ int launchInstr(int **intInstr){
 
 					if(lvldB <= 63){
 						int temp = lvldB / 2;
-						pinOuts[i][pinOutsWidth] |= setPins(temp);;;
+
+						pinOuts[i][pinOutsWidth] =  0b00000001;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						//pinOuts[i][pinOutsWidth] = 0b00000000;
+						pinOuts[i][pinOutsWidth] = setPins(temp);;;
+
+						if(pinOuts[i][pinOutsWidth] == 0b00000000){
+							pinOuts[i][pinOutsWidth] = 0b00000001;
+						}else{
+							pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1; 
+						}
+						
 						temp = lvldB - temp;
 
 						pinOutsWidth++;
-
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] =  0b01000000 | setPins(temp);
-					}else{
-						int temp = lvldB - 63;
+						pinOuts[i][pinOutsWidth] =  0b00000010;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						//pinOuts[i][pinOutsWidth] = 0b00000000;
+						pinOuts[i][pinOutsWidth] = setPins(temp);
 
-						pinOuts[i][pinOutsWidth] |= 0b00111111;
+						if(pinOuts[i][pinOutsWidth] == 0b00000000){
+							pinOuts[i][pinOutsWidth] = 0b00000001;
+						}else{
+							pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1; 
+						}
+
+					}else{
+						
+						int temp = lvldB - 63;
+						pinOuts[i][pinOutsWidth] = 0b00000001;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = 0b00111111;
+						pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1;
 
 						pinOutsWidth++;
-
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(temp);
+						pinOuts[i][pinOutsWidth] =  0b00000010;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = setPins(temp);
+						pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1;
 					}
-
+					
 					pinOutsWidth++;
 				break;
 
 				case 2:
 					if(lvldB > 63)
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 2 is larger than 63dB!\n", i);
-
-					pinOuts[i][pinOutsWidth] = 0b01000000 | setPins(lvldB);
-
+					
+					pinOuts[i][pinOutsWidth] =  0b00000010;
+					pinOutsWidth++;
+					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+					
+					pinOuts[i][pinOutsWidth] = setPins(lvldB);
+					
+					if(pinOuts[i][pinOutsWidth] == 0b00000000){
+						pinOuts[i][pinOutsWidth] = 0b00000001;
+					}else{
+						pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1; 
+					}
+					
 					pinOutsWidth++;
 				break;
 
 				case 3:
 					if(lvldB > 63)
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 3 is larger than 63dB!\n", i);
+					
+					pinOuts[i][pinOutsWidth] =  0b00000011;
+					pinOutsWidth++;
+					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 
-					pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(lvldB);
+					pinOuts[i][pinOutsWidth] = setPins(lvldB);
+					
+					if(pinOuts[i][pinOutsWidth] == 0b00000000){
+						pinOuts[i][pinOutsWidth] = 0b00000001;
+					}else{
+						pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1; 
+					}
 
 					pinOutsWidth++;
 				break;
 
 				case 34:
 					if(lvldB > 126)
-						printf("\nWarning! Argument supplied on line %d to attenuator(s) 3 4 is larger than 126dB!\n", i);
-					
+						printf("\nWarning! Argument supplied on line %d to attenuator(s) 1 2 is larger than 126dB!\n", i);
+
 					if(lvldB <= 63){
 						int temp = lvldB / 2;
-						pinOuts[i][pinOutsWidth] = 0b10000000 | setPins(temp);
+
+						pinOuts[i][pinOutsWidth] =  0b00000011;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						//pinOuts[i][pinOutsWidth] = 0b00000000;
+						pinOuts[i][pinOutsWidth] = setPins(temp);;;
+
+						if(pinOuts[i][pinOutsWidth] == 0b00000000){
+							pinOuts[i][pinOutsWidth] = 0b00000001;
+						}else{
+							pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1; 
+						}
+						
 						temp = lvldB - temp;
 
 						pinOutsWidth++;
-
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(temp);
+						pinOuts[i][pinOutsWidth] =  0b00000100;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						//pinOuts[i][pinOutsWidth] = 0b00000000;
+						pinOuts[i][pinOutsWidth] = setPins(temp);
+
+						if(pinOuts[i][pinOutsWidth] == 0b00000000){
+							pinOuts[i][pinOutsWidth] = 0b00000001;
+						}else{
+							pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1; 
+						}
+
 					}else{
 						int temp = lvldB - 63;
-
-						pinOuts[i][pinOutsWidth] |= 0b10111111;
+						pinOuts[i][pinOutsWidth] = 0b00000011;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = 0b00111111;
+						pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1;
 
 						pinOutsWidth++;
-
 						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
-						pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(temp);
+						pinOuts[i][pinOutsWidth] =  0b00000100;
+						pinOutsWidth++;
+						pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+						pinOuts[i][pinOutsWidth] = setPins(temp);
+						pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1;
 					}
 					pinOutsWidth++;
 
@@ -512,8 +624,18 @@ int launchInstr(int **intInstr){
 				case 4:
 					if(lvldB > 63)
 						printf("\nWarning! Argument supplied on line %d to attenuator(s) 4 is larger than 63dB!\n", i);
-
-					pinOuts[i][pinOutsWidth] = 0b11000000 | setPins(lvldB);
+					
+					pinOuts[i][pinOutsWidth] =  0b00000100;
+					pinOutsWidth++;
+					pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
+					
+					pinOuts[i][pinOutsWidth] = setPins(lvldB);
+					
+					if(pinOuts[i][pinOutsWidth] == 0b00000000){
+						pinOuts[i][pinOutsWidth] = 0b00000001;
+					}else{
+						pinOuts[i][pinOutsWidth] = pinOuts[i][pinOutsWidth] << 1; 
+					}
 					
 					pinOutsWidth++;
 				break;
@@ -564,7 +686,7 @@ int launchInstr(int **intInstr){
 			}
 			j++;
 		}
-
+		
 		pinOuts[i] = realloc(pinOuts[i], sizeof(char)*(pinOutsWidth+1));
 
 		pinOuts[i][pinOutsWidth] = '\0';
@@ -589,27 +711,29 @@ int launchInstr(int **intInstr){
 	//  this 'a' will send a signal to the arduino to tell it to behave in "file mode"
 	char s[1] = { 'a' };
 	char temp      [256];
-	char buffer2   [256];
-	char sig[1]  = { 0b11111100 };
-	char sig2[1] = { 0b11111111 };
-		
 	for(int i = 0; i <INSTR_LENGTH; i++){
-	//this is where the insturctions will be sent to the arduino
-		if (!WriteFile(hDevice, s, 1, &bytesWritten, NULL)) {
-			printf("\n\nALERT! Failed to send activation signal to arduino! Connection may have broken!\n\n", GetLastError());
-		} else {
-			
-			printf("\n");
-			//printf("\nRead from file mode signal has been sent to attenuator.\n");
-		}
-
 		bool stop = 1;
+		//this is where the insturctions will be sent to the arduino
+		if (!WriteFile(hDevice, s, 1, &bytesWritten, NULL)) 
+			printf("\n\nALERT! Failed to send instruction to arduino! Connection may have broken!\n\n", GetLastError());
+
+			// int stop2 = 1;
+			// while(stop2)
+			// 	if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
+			// 		if (bytesRead > 0){
+			// 			buffer[bytesRead] = '\0';
+			// 			for(int i = 0; i < bytesRead; i++){
+			// 				printf("\n");
+			// 				printf("Hello from arduino! Byte received: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(buffer[i]));
+			// 			}
+			// 			stop2 = 0;
+			// 		}
+			// 	}
 		
-		printf("\nLoading attenuator setting: ");
+		printf("\nLoading attenuator setting: %d",i+1);
 		printf("\nTime: %d",intInstr[i][0]);
 		
 		j = 1;
-		printf("\n");
 		while(intInstr[i][j] != -1){
 			if(j == 1){
 				printf("\nAttenuator %d is being set for %ddB",intInstr[i][j],intInstr[i][j+1]);
@@ -621,14 +745,15 @@ int launchInstr(int **intInstr){
 		}
 		
 		while (stop) {
-			// printf("\nWaiting for return... \n");
-			// printf("Arduino may need to be reset if this takes too long. \n");
 
 			int numBytes = 0;
 
 			while (pinOuts[i][numBytes] != '\0'){
+			printf(" \npinOuts Byte: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][numBytes]));
 				numBytes++;
 			}
+			printf(" \npinOuts Byte: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][numBytes]));
+
 			
 			//printf("\nNum bytes: %d\n",numBytes);
 			// printf(" \npinOuts[0] Byte: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][0]));
@@ -637,6 +762,18 @@ int launchInstr(int **intInstr){
 			// printf(" \npinOuts[3] Byte: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(pinOuts[i][3]));
 
 			WriteFile(hDevice, pinOuts[i], numBytes+1, &bytesWritten, NULL);
+			//int stop2 = 1;
+			// while(stop2)
+			// 	if (ReadFile(hDevice, buffer, sizeof(buffer) - 1, &bytesRead, NULL)){
+			// 		if (bytesRead > 0){
+			// 			buffer[bytesRead] = '\0';
+			// 			for(int i = 0; i < bytesRead; i++){
+			// 				printf("\n");
+			// 				printf("Hello from arduino! Byte received: "BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(buffer[i]));
+			// 			}
+			// 			stop2 = 0;
+			// 		}
+			// 	}
 			delay(intInstr[i][0]);
 			printf("\nFinished...");
 			stop = 0;
